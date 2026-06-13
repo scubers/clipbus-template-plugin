@@ -19,7 +19,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, watch } from "vue";
-import { pasty } from "@pasty/plugin-sdk/ui";
+import { clipbus } from "@clipbus/plugin-sdk/ui";
 import { useTopicRef } from "../../../../shared/composables/useTopicRef";
 
 interface TopicState {
@@ -27,10 +27,10 @@ interface TopicState {
   updatedAt: string;
 }
 
-const pluginContext = useTopicRef(pasty.pluginContext);
-const item = useTopicRef(pasty.item);
-const attachment = useTopicRef(pasty.item.attachment);
-const theme = useTopicRef(pasty.theme);
+const pluginContext = useTopicRef(clipbus.pluginContext);
+const item = useTopicRef(clipbus.item);
+const attachment = useTopicRef(clipbus.item.attachment);
+const theme = useTopicRef(clipbus.theme);
 
 function serialize(value: unknown): string {
   return JSON.stringify(value, null, 2) ?? "undefined";
@@ -44,10 +44,10 @@ function nowShort(): string {
 // payload (e.g. the host re-broadcasting an unchanged theme snapshot) so the
 // "updated" timestamp and the JSON body do not flicker.
 const state = reactive<Record<string, TopicState>>({
-  "pasty.pluginContext": { serialized: serialize(pluginContext.value), updatedAt: "" },
-  "pasty.item": { serialized: serialize(item.value), updatedAt: "" },
-  "pasty.item.attachment": { serialized: serialize(attachment.value), updatedAt: "" },
-  "pasty.theme": { serialized: serialize(theme.value), updatedAt: "" },
+  "clipbus.pluginContext": { serialized: serialize(pluginContext.value), updatedAt: "" },
+  "clipbus.item": { serialized: serialize(item.value), updatedAt: "" },
+  "clipbus.item.attachment": { serialized: serialize(attachment.value), updatedAt: "" },
+  "clipbus.theme": { serialized: serialize(theme.value), updatedAt: "" },
 });
 
 function trackTopic(name: string, valueRef: Readonly<{ value: unknown }>): void {
@@ -58,18 +58,18 @@ function trackTopic(name: string, valueRef: Readonly<{ value: unknown }>): void 
   });
 }
 
-trackTopic("pasty.pluginContext", pluginContext);
-trackTopic("pasty.item", item);
-trackTopic("pasty.item.attachment", attachment);
-trackTopic("pasty.theme", theme);
+trackTopic("clipbus.pluginContext", pluginContext);
+trackTopic("clipbus.item", item);
+trackTopic("clipbus.item.attachment", attachment);
+trackTopic("clipbus.theme", theme);
 
-// pasty.item.search topic was removed in plugin-api-shrink — search terms are
+// clipbus.item.search topic was removed in plugin-api-shrink — search terms are
 // no longer injected to attachment renderers; Node detectors handle filtering.
 const topics = computed(() => [
-  { name: "pasty.pluginContext", ...state["pasty.pluginContext"] },
-  { name: "pasty.item", ...state["pasty.item"] },
-  { name: "pasty.item.attachment", ...state["pasty.item.attachment"] },
-  { name: "pasty.theme", ...state["pasty.theme"] },
+  { name: "clipbus.pluginContext", ...state["clipbus.pluginContext"] },
+  { name: "clipbus.item", ...state["clipbus.item"] },
+  { name: "clipbus.item.attachment", ...state["clipbus.item.attachment"] },
+  { name: "clipbus.theme", ...state["clipbus.theme"] },
 ]);
 </script>
 
@@ -80,8 +80,8 @@ const topics = computed(() => [
   gap: 4px;
   padding: 10px;
   border-radius: 10px;
-  background: var(--pasty-surface, #ffffff);
-  border: 1px solid var(--pasty-border, rgba(148, 163, 184, 0.3));
+  background: var(--clipbus-surface, #ffffff);
+  border: 1px solid var(--clipbus-border, rgba(148, 163, 184, 0.3));
 }
 
 .topic-monitor__title {
@@ -90,14 +90,14 @@ const topics = computed(() => [
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--pasty-text-tertiary, #64748b);
+  color: var(--clipbus-text-tertiary, #64748b);
 }
 
 .topic-monitor__item {
-  border: 1px solid var(--pasty-border, rgba(226, 232, 240, 0.9));
+  border: 1px solid var(--clipbus-border, rgba(226, 232, 240, 0.9));
   border-radius: 8px;
   overflow: hidden;
-  background: var(--pasty-surface-elevated, rgba(248, 250, 252, 0.78));
+  background: var(--clipbus-surface-elevated, rgba(248, 250, 252, 0.78));
 }
 
 .topic-monitor__summary {
@@ -118,13 +118,13 @@ const topics = computed(() => [
   font-size: 11px;
   font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
   font-weight: 700;
-  color: var(--pasty-text-primary, #0f172a);
+  color: var(--clipbus-text-primary, #0f172a);
   flex: 1;
 }
 
 .topic-monitor__updated {
   font-size: 10px;
-  color: var(--pasty-text-tertiary, #64748b);
+  color: var(--clipbus-text-tertiary, #64748b);
   white-space: nowrap;
 }
 
@@ -134,11 +134,11 @@ const topics = computed(() => [
   font-size: 10px;
   font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
   line-height: 1.4;
-  color: var(--pasty-text-secondary, #475569);
+  color: var(--clipbus-text-secondary, #475569);
   white-space: pre-wrap;
   word-break: break-all;
   max-height: 160px;
   overflow-y: auto;
-  border-top: 1px solid var(--pasty-border, rgba(226, 232, 240, 0.9));
+  border-top: 1px solid var(--clipbus-border, rgba(226, 232, 240, 0.9));
 }
 </style>

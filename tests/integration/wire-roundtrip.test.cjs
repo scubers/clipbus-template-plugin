@@ -65,7 +65,7 @@ let bridgePath = '';
  */
 const HOST_MOCK_RESPONSES = {
   'item.setTags': { tags: ['wire-user-rpc'] },
-  'item.materializeImagePath': { path: '/tmp/pasty-gallery-wire.png' },
+  'item.materializeImagePath': { path: '/tmp/clipbus-gallery-wire.png' },
   'settings.get': { value: null },
   'settings.getAll': {},
 };
@@ -190,7 +190,7 @@ function roundtrip(method, request, timeoutMs = 10000, options = undefined) {
 before(() => {
   // Generate bridge JS and write to temp file
   const bridgeJS = generateBridgeJS();
-  tmpDir = mkdtempSync(path.join(tmpdir(), 'pasty-wire-test-'));
+  tmpDir = mkdtempSync(path.join(tmpdir(), 'clipbus-wire-test-'));
   bridgePath = path.join(tmpDir, 'bridge.cjs');
   writeFileSync(bridgePath, bridgeJS);
 });
@@ -249,7 +249,7 @@ describe('wire roundtrip — runtime.userRPC gallery bridge', () => {
     assert.deepEqual(hostCalls, ['item.materializeImagePath']);
     assert.deepEqual(res.result, {
       ok: true,
-      result: { path: '/tmp/pasty-gallery-wire.png' },
+      result: { path: '/tmp/clipbus-gallery-wire.png' },
     });
   });
 });

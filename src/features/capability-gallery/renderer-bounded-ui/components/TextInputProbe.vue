@@ -27,7 +27,7 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import { pasty } from "@pasty/plugin-sdk/ui";
+import { clipbus } from "@clipbus/plugin-sdk/ui";
 
 const emit = defineEmits<{
   log: [payload: { ts: string; api: string; args: unknown }];
@@ -39,10 +39,10 @@ const isComposing = ref<boolean>(false);
 
 async function signal(state: { isFocused: boolean; isComposing: boolean }): Promise<void> {
   const ts = new Date().toISOString();
-  await pasty.textInput.stateChanged(state);
+  await clipbus.textInput.stateChanged(state);
   emit("log", {
     ts,
-    api: "pasty.textInput.stateChanged({ isFocused, isComposing })",
+    api: "clipbus.textInput.stateChanged({ isFocused, isComposing })",
     args: state,
   });
 }
@@ -76,8 +76,8 @@ async function handleCompositionEnd(): Promise<void> {
   gap: 6px;
   padding: 10px;
   border-radius: 10px;
-  background: var(--pasty-surface, #ffffff);
-  border: 1px solid var(--pasty-border, rgba(148, 163, 184, 0.3));
+  background: var(--clipbus-surface, #ffffff);
+  border: 1px solid var(--clipbus-border, rgba(148, 163, 184, 0.3));
 }
 
 .text-input-probe__title {
@@ -86,28 +86,28 @@ async function handleCompositionEnd(): Promise<void> {
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--pasty-text-tertiary, #64748b);
+  color: var(--clipbus-text-tertiary, #64748b);
 }
 
 .text-input-probe__label {
   font-size: 11px;
-  color: var(--pasty-text-secondary, #475569);
+  color: var(--clipbus-text-secondary, #475569);
   line-height: 1.4;
 }
 
 .text-input-probe__input {
   width: 100%;
   border-radius: 8px;
-  border: 1px solid var(--pasty-border, rgba(148, 163, 184, 0.3));
-  background: var(--pasty-surface-elevated, rgba(248, 250, 252, 0.88));
+  border: 1px solid var(--clipbus-border, rgba(148, 163, 184, 0.3));
+  background: var(--clipbus-surface-elevated, rgba(248, 250, 252, 0.88));
   padding: 8px 10px;
   font-size: 12px;
-  color: var(--pasty-text-primary, #0f172a);
+  color: var(--clipbus-text-primary, #0f172a);
   outline: none;
 }
 
 .text-input-probe__input:focus {
-  border-color: var(--pasty-accent, #0f172a);
+  border-color: var(--clipbus-accent, #0f172a);
   box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.08);
 }
 
@@ -129,14 +129,14 @@ async function handleCompositionEnd(): Promise<void> {
 
 .text-input-probe__badge--focused {
   background: rgba(37, 99, 235, 0.12);
-  color: var(--pasty-accent, #2563EB);
+  color: var(--clipbus-accent, #2563EB);
   border: 1px solid rgba(37, 99, 235, 0.3);
 }
 
 .text-input-probe__badge--blurred {
-  background: var(--pasty-surface-elevated, rgba(248, 250, 252, 0.78));
-  color: var(--pasty-text-tertiary, #64748b);
-  border: 1px solid var(--pasty-border, rgba(226, 232, 240, 0.9));
+  background: var(--clipbus-surface-elevated, rgba(248, 250, 252, 0.78));
+  color: var(--clipbus-text-tertiary, #64748b);
+  border: 1px solid var(--clipbus-border, rgba(226, 232, 240, 0.9));
 }
 
 .text-input-probe__badge--composing {

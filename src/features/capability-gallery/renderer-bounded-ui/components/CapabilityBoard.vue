@@ -47,8 +47,8 @@ defineProps<{
   gap: 6px;
   padding: 10px;
   border-radius: 10px;
-  background: var(--pasty-surface, #ffffff);
-  border: 1px solid var(--pasty-border, rgba(148, 163, 184, 0.3));
+  background: var(--clipbus-surface, #ffffff);
+  border: 1px solid var(--clipbus-border, rgba(148, 163, 184, 0.3));
 }
 
 .capability-board__title {
@@ -57,14 +57,14 @@ defineProps<{
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--pasty-text-tertiary, #64748b);
+  color: var(--clipbus-text-tertiary, #64748b);
 }
 
 .capability-board__section {
-  border: 1px solid var(--pasty-border, rgba(226, 232, 240, 0.9));
+  border: 1px solid var(--clipbus-border, rgba(226, 232, 240, 0.9));
   border-radius: 8px;
   overflow: hidden;
-  background: var(--pasty-surface-elevated, rgba(248, 250, 252, 0.78));
+  background: var(--clipbus-surface-elevated, rgba(248, 250, 252, 0.78));
 }
 
 .capability-board__summary {
@@ -84,12 +84,12 @@ defineProps<{
 .capability-board__section-title {
   font-size: 12px;
   font-weight: 700;
-  color: var(--pasty-text-primary, #0f172a);
+  color: var(--clipbus-text-primary, #0f172a);
 }
 
 .capability-board__section-desc {
   font-size: 10px;
-  color: var(--pasty-text-tertiary, #64748b);
+  color: var(--clipbus-text-tertiary, #64748b);
   line-height: 1.4;
 }
 
@@ -98,7 +98,7 @@ defineProps<{
   flex-wrap: wrap;
   gap: 6px;
   padding: 6px 8px 8px;
-  border-top: 1px solid var(--pasty-border, rgba(226, 232, 240, 0.9));
+  border-top: 1px solid var(--clipbus-border, rgba(226, 232, 240, 0.9));
 }
 
 .capability-board__btn {
@@ -109,16 +109,16 @@ defineProps<{
   gap: 2px;
   padding: 6px 10px;
   border-radius: 8px;
-  border: 1px solid var(--pasty-border, rgba(148, 163, 184, 0.3));
-  background: var(--pasty-surface, #ffffff);
-  color: var(--pasty-text-primary, #0f172a);
+  border: 1px solid var(--clipbus-border, rgba(148, 163, 184, 0.3));
+  background: var(--clipbus-surface, #ffffff);
+  color: var(--clipbus-text-primary, #0f172a);
   cursor: pointer;
   text-align: left;
   min-width: 0;
 }
 
 .capability-board__btn:focus-visible {
-  outline: 2px solid var(--pasty-accent, #2563EB);
+  outline: 2px solid var(--clipbus-accent, #2563EB);
   outline-offset: 2px;
 }
 
@@ -129,13 +129,13 @@ defineProps<{
 .capability-board__btn-label {
   font-size: 12px;
   font-weight: 600;
-  color: var(--pasty-text-primary, #0f172a);
+  color: var(--clipbus-text-primary, #0f172a);
 }
 
 .capability-board__btn-sig {
   font-size: 9px;
   font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
-  color: var(--pasty-text-tertiary, #64748b);
+  color: var(--clipbus-text-tertiary, #64748b);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -149,7 +149,7 @@ defineProps<{
   text-transform: uppercase;
   padding: 1px 5px;
   border-radius: 999px;
-  background: var(--pasty-accent, #2563EB);
-  color: var(--pasty-accent-contrast, #ffffff);
+  background: var(--clipbus-accent, #2563EB);
+  color: var(--clipbus-accent-contrast, #ffffff);
 }
 </style>

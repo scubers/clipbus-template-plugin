@@ -52,7 +52,7 @@ async function discoverPages() {
         kind = "actions";
         name = `template-${featureName}`;
       }
-      const globalName = `PastyTemplatePlugin${pascalCase(featureName)}`;
+      const globalName = `ClipbusTemplatePlugin${pascalCase(featureName)}`;
       pages.push({
         name,
         kind,
@@ -74,7 +74,7 @@ async function discoverPages() {
       if (!override) {
         throw new Error(`Nested UI entry ${key} has no NESTED_OVERRIDES mapping in build-ui.mjs`);
       }
-      const globalName = `PastyTemplatePlugin${pascalCase(featureName)}${pascalCase(subDirent.name)}`;
+      const globalName = `ClipbusTemplatePlugin${pascalCase(featureName)}${pascalCase(subDirent.name)}`;
       pages.push({
         name: override.name,
         kind: override.kind,

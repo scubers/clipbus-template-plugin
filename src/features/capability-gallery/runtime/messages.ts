@@ -1,7 +1,7 @@
 // RPC message contract for gallery UI ↔ runtime bridge.
 // Each key corresponds to a host.* method we want to demonstrate at runtime
 // scope (so the bounded-ui RuntimeBridgePanel can drive it via
-// pasty.runtime.invoke({ key, payload })).
+// clipbus.runtime.invoke({ key, payload })).
 
 export const GALLERY_RPC_KEYS = {
   itemReadAttachment: "gallery.host.item.readAttachment",
@@ -41,6 +41,6 @@ export interface GalleryCopyImageResponse {
 }
 
 export interface GallerySolidImageResponse {
-  // pasty-asset:// URL the WebView can render directly in an <img>.
+  // clipbus-asset:// URL the WebView can render directly in an <img>.
   url: string;
 }

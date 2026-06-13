@@ -1,5 +1,5 @@
-import { definePlugin } from "@pasty/plugin-sdk/runtime";
-import type { PluginDetectorHandler, PluginDetectorInput, PluginDetectorArtifact } from "@pasty/plugin-sdk/runtime";
+import { definePlugin } from "@clipbus/plugin-sdk/runtime";
+import type { PluginDetectorHandler, PluginDetectorInput, PluginDetectorArtifact } from "@clipbus/plugin-sdk/runtime";
 import { buildPreviewArtifact } from "./features/preview-renderer/detector";
 import { createTemplatePreviewRenderer } from "./features/preview-renderer/renderer";
 import { buildExpandedArtifact } from "./features/expanded-renderer/detector";

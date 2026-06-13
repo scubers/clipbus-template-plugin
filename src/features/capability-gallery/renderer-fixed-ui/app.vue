@@ -20,12 +20,12 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
-import { pasty } from "@pasty/plugin-sdk/ui";
+import { clipbus } from "@clipbus/plugin-sdk/ui";
 import { useTopicRef } from "../../../shared/composables/useTopicRef";
 import { decodeGalleryPayload } from "../runtime/payloads";
 
-const attachmentPayload = useTopicRef(pasty.item.attachment);
-const themePayload = useTopicRef(pasty.theme);
+const attachmentPayload = useTopicRef(clipbus.item.attachment);
+const themePayload = useTopicRef(clipbus.theme);
 
 const lastHostInvoke = ref<string>("");
 
@@ -43,12 +43,12 @@ function formatJSON(value: unknown): string {
 let unsubHostInvoke: (() => void) | null = null;
 
 onMounted(async () => {
-  await pasty.attachmentRenderer.setButtons({
+  await clipbus.attachmentRenderer.setButtons({
     buttons: [
       { id: "ping-fixed", title: "Ping", isEnabled: true },
     ],
   });
-  unsubHostInvoke = pasty.attachmentRenderer.onHostInvoke.on((detail) => {
+  unsubHostInvoke = clipbus.attachmentRenderer.onHostInvoke.on((detail) => {
     lastHostInvoke.value = `${detail?.buttonID ?? "<unknown>"} @ ${new Date().toLocaleTimeString()}`;
   });
 });
@@ -71,8 +71,8 @@ onUnmounted(() => {
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  background: var(--pasty-surface, #ffffff);
-  color: var(--pasty-text-primary, #0f172a);
+  background: var(--clipbus-surface, #ffffff);
+  color: var(--clipbus-text-primary, #0f172a);
   font-size: 11px;
 }
 
@@ -87,14 +87,14 @@ onUnmounted(() => {
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--pasty-text-tertiary, #64748b);
+  color: var(--clipbus-text-tertiary, #64748b);
 }
 
 .fixed-shell__title {
   margin: 0;
   font-size: 13px;
   font-weight: 700;
-  color: var(--pasty-text-primary, #0f172a);
+  color: var(--clipbus-text-primary, #0f172a);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -104,9 +104,9 @@ onUnmounted(() => {
   display: grid;
   gap: 2px;
   padding: 4px 6px;
-  border: 1px solid var(--pasty-border, rgba(226, 232, 240, 0.9));
+  border: 1px solid var(--clipbus-border, rgba(226, 232, 240, 0.9));
   border-radius: 6px;
-  background: var(--pasty-surface-elevated, rgba(248, 250, 252, 0.78));
+  background: var(--clipbus-surface-elevated, rgba(248, 250, 252, 0.78));
   overflow: hidden;
 }
 
@@ -116,7 +116,7 @@ onUnmounted(() => {
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--pasty-text-tertiary, #64748b);
+  color: var(--clipbus-text-tertiary, #64748b);
 }
 
 .fixed-shell__snapshot {
@@ -124,7 +124,7 @@ onUnmounted(() => {
   font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
   font-size: 9.5px;
   line-height: 1.3;
-  color: var(--pasty-text-secondary, #475569);
+  color: var(--clipbus-text-secondary, #475569);
   white-space: pre-wrap;
   word-break: break-all;
   max-height: 60px;
@@ -134,6 +134,6 @@ onUnmounted(() => {
 .fixed-shell__footer {
   margin: auto 0 0;
   font-size: 10px;
-  color: var(--pasty-text-tertiary, #64748b);
+  color: var(--clipbus-text-tertiary, #64748b);
 }
 </style>

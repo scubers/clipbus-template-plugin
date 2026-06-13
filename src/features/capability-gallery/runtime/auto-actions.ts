@@ -6,13 +6,13 @@
 // Each handler also exercises a handful of ctx.host.* methods so the runtime
 // log demonstrates that handlers are not limited to the result builder.
 
-import { actionResult } from "@pasty/plugin-sdk/runtime";
+import { actionResult } from "@clipbus/plugin-sdk/runtime";
 import type {
   PluginAutoRunActionHandler,
   PluginAutoRunActionInput,
   PluginActionOperationResult,
   PluginActionResolveResult,
-} from "@pasty/plugin-sdk/runtime";
+} from "@clipbus/plugin-sdk/runtime";
 
 // All three gallery auto-run actions follow the same lifecycle: they execute
 // directly from the host without a draft UI. After plugin-api-shrink (R13

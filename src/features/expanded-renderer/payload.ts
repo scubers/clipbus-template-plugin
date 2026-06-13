@@ -2,7 +2,7 @@
 // Single source of truth for the template expanded attachment payload.
 // See: openspec/changes/plugin-sdk-template-opt §4b.10
 
-import type { PluginContentEnvelope, PluginClipboardItem, PluginDetectorArtifact } from "@pasty/plugin-sdk/runtime";
+import type { PluginContentEnvelope, PluginClipboardItem, PluginDetectorArtifact } from "@clipbus/plugin-sdk/runtime";
 
 // PathEntry mirrors the wire-side PluginPathEntry struct emitted by the host
 // inside path_reference content envelopes.

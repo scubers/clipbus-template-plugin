@@ -12,7 +12,7 @@ const projectRoot = path.resolve(__dirname, '../..');
 
 function collectUISource() {
   // UI source (Vue SFCs) lives under src/features/ (moved from src/ui/ in §1-§5).
-  // Only .vue files are collected — .ts runtime files legitimately import @pasty/plugin-sdk/runtime.
+  // Only .vue files are collected — .ts runtime files legitimately import @clipbus/plugin-sdk/runtime.
   // src/preview/ is excluded — the preview host is allowed to set bootstrap globals.
   const featuresDir = path.join(projectRoot, 'src/features');
   const files = [];
@@ -40,12 +40,12 @@ test('UI source has no direct window.webkit.messageHandlers calls', () => {
   }
 });
 
-test('UI source has no direct window.__PASTY_PLUGIN_BOOTSTRAP__ access', () => {
+test('UI source has no direct window.__CLIPBUS_PLUGIN_BOOTSTRAP__ access', () => {
   const files = collectUISource();
   for (const { path: p, content } of files) {
     assert.ok(
-      !content.includes('window.__PASTY_PLUGIN_BOOTSTRAP__'),
-      `${p}: must not access window.__PASTY_PLUGIN_BOOTSTRAP__ directly`
+      !content.includes('window.__CLIPBUS_PLUGIN_BOOTSTRAP__'),
+      `${p}: must not access window.__CLIPBUS_PLUGIN_BOOTSTRAP__ directly`
     );
   }
 });
@@ -58,34 +58,34 @@ test('UI source has no createAttachmentBridge or createActionBridge', () => {
   }
 });
 
-test('UI source has no addEventListener for pasty-plugin-* custom events', () => {
+test('UI source has no addEventListener for clipbus-plugin-* custom events', () => {
   const files = collectUISource();
   for (const { path: p, content } of files) {
     assert.ok(
-      !content.includes("addEventListener('pasty-plugin-") && !content.includes('addEventListener("pasty-plugin-'),
-      `${p}: must not listen to pasty-plugin-* events directly`
+      !content.includes("addEventListener('clipbus-plugin-") && !content.includes('addEventListener("clipbus-plugin-'),
+      `${p}: must not listen to clipbus-plugin-* events directly`
     );
   }
 });
 
-test('UI source has no pasty.action.invoke references', () => {
+test('UI source has no clipbus.action.invoke references', () => {
   const files = collectUISource();
   for (const { path: p, content } of files) {
     assert.ok(
-      !content.includes('pasty.action.invoke'),
-      `${p}: must not use pasty.action.invoke (removed verb)`
+      !content.includes('clipbus.action.invoke'),
+      `${p}: must not use clipbus.action.invoke (removed verb)`
     );
   }
 });
 
-test('Gallery DraftActionApp.vue contains at least one pasty.action.complete call', () => {
+test('Gallery DraftActionApp.vue contains at least one clipbus.action.complete call', () => {
   // template-draft-action and src/features/draft-action/ were removed in plugin-api-shrink.
   // The live draft action UI is now capability-gallery/draft-action-ui/app.vue (gallery-draft).
   const draftAppPath = path.join(projectRoot, 'src/features/capability-gallery/draft-action-ui/app.vue');
   const content = fs.readFileSync(draftAppPath, 'utf8');
   assert.ok(
-    content.includes('pasty.action.complete') || content.includes('complete('),
-    `capability-gallery/draft-action-ui/app.vue must call pasty.action.complete (via complete() wrapper from composable)`
+    content.includes('clipbus.action.complete') || content.includes('complete('),
+    `capability-gallery/draft-action-ui/app.vue must call clipbus.action.complete (via complete() wrapper from composable)`
   );
   assert.ok(
     content.includes("resultKind"),
@@ -93,12 +93,12 @@ test('Gallery DraftActionApp.vue contains at least one pasty.action.complete cal
   );
 });
 
-test('UI source does not import directly from @pasty/plugin-sdk/runtime', () => {
+test('UI source does not import directly from @clipbus/plugin-sdk/runtime', () => {
   const files = collectUISource();
   for (const { path: p, content } of files) {
     assert.ok(
-      !content.includes('@pasty/plugin-sdk/runtime'),
-      `${p}: UI files must not import from @pasty/plugin-sdk/runtime`
+      !content.includes('@clipbus/plugin-sdk/runtime'),
+      `${p}: UI files must not import from @clipbus/plugin-sdk/runtime`
     );
   }
 });
@@ -113,9 +113,9 @@ test('ExpandedAttachmentTemplateApp declares its buttons via setButtons', () => 
   assert.ok(src.includes('setButtons('), 'expanded-renderer/app.vue must call setButtons');
 });
 
-test('Gallery DraftActionApp declares its buttons via pasty.action.setButtons', () => {
+test('Gallery DraftActionApp declares its buttons via clipbus.action.setButtons', () => {
   // template-draft-action and src/features/draft-action/ were removed in plugin-api-shrink.
   // The live draft action UI is now capability-gallery/draft-action-ui/app.vue (gallery-draft).
   const src = fs.readFileSync(path.join(projectRoot, 'src/features/capability-gallery/draft-action-ui/app.vue'), 'utf8');
-  assert.ok(src.includes('pasty.action.setButtons('), 'capability-gallery/draft-action-ui/app.vue must call pasty.action.setButtons');
+  assert.ok(src.includes('clipbus.action.setButtons('), 'capability-gallery/draft-action-ui/app.vue must call clipbus.action.setButtons');
 });

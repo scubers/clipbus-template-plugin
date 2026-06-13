@@ -2,7 +2,7 @@
 // Each handler simply validates and surfaces the attachment payload — the
 // real demonstration logic lives in the matching UI entry point.
 
-import type { PluginAttachmentRendererHandler, PluginResolveAttachmentInput, PluginAttachmentResolveResult } from "@pasty/plugin-sdk/runtime";
+import type { PluginAttachmentRendererHandler, PluginResolveAttachmentInput, PluginAttachmentResolveResult } from "@clipbus/plugin-sdk/runtime";
 import { decodeGalleryPayload, type GalleryAttachmentKind } from "./payloads.ts";
 
 const TINT_HEX: Record<GalleryAttachmentKind, string> = {

@@ -79,7 +79,7 @@ test("package declares only the template build dependencies", () => {
     fs.readFileSync(path.resolve(projectRoot, "package.json"), "utf8")
   );
 
-  assert.equal(packageJSON.name, "@pasty/template-plugin");
+  assert.equal(packageJSON.name, "@clipbus/template-plugin");
   assert.ok(packageJSON.dependencies.vue, "expected vue dependency");
   assert.ok(packageJSON.scripts.dev, "expected local preview dev script");
   assert.ok(packageJSON.scripts["dev:renderer"], "expected renderer preview dev script");
@@ -537,7 +537,7 @@ test("expanded renderer Vue uses attachAutoFit bounds matching manifest height",
   assert.equal(Number(maxMatch[1]), expanded.height.max);
 });
 
-test("attachment / expanded Vue files use pasty CSS tokens instead of raw hex", () => {
+test("attachment / expanded Vue files use clipbus CSS tokens instead of raw hex", () => {
   // Note: src/features/draft-action/app.vue was removed in plugin-api-shrink.
   const filesToScan = [
     "src/features/preview-renderer/app.vue",
@@ -574,12 +574,12 @@ test("attachment / expanded Vue files use pasty CSS tokens instead of raw hex", 
       while ((cursor = lowercaseStyle.indexOf(hex, cursor)) !== -1) {
         const contextStart = Math.max(0, cursor - 80);
         const context = lowercaseStyle.slice(contextStart, cursor);
-        const lastVar = context.lastIndexOf("var(--pasty-");
+        const lastVar = context.lastIndexOf("var(--clipbus-");
         const lastClose = context.lastIndexOf(")");
         const insideVar = lastVar !== -1 && lastVar > lastClose;
         assert.ok(
           insideVar,
-          `${relativePath}: hardcoded ${hex} must appear only as var(--pasty-..., ${hex}) fallback`
+          `${relativePath}: hardcoded ${hex} must appear only as var(--clipbus-..., ${hex}) fallback`
         );
         cursor += hex.length;
       }

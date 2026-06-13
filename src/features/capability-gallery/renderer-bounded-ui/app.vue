@@ -4,7 +4,7 @@
       <h1 class="gallery-header__title">Capability Gallery (bounded 120-480)</h1>
       <p class="gallery-header__hint">
         Use the host button strip for window / autoFit controls
-        (registered via <code>pasty.attachmentRenderer.setButtons</code>).
+        (registered via <code>clipbus.attachmentRenderer.setButtons</code>).
       </p>
     </header>
 
@@ -24,8 +24,8 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
-import { pasty } from "@pasty/plugin-sdk/ui";
-import { autoFit } from "@pasty/plugin-sdk/dom";
+import { clipbus } from "@clipbus/plugin-sdk/ui";
+import { autoFit } from "@clipbus/plugin-sdk/dom";
 import { galleryCapabilitySections } from "./catalog";
 import type { CapabilityButton } from "./catalog";
 import LogPanel from "./components/LogPanel.vue";
@@ -51,6 +51,12 @@ const container = ref<HTMLElement | null>(null);
 
 let disconnectAutoFit: (() => void) | null = null;
 let unsubHostInvoke: (() => void) | null = null;
+let unsubInfoPanelAction: (() => void) | null = null;
+let unsubInfoPanelClose: (() => void) | null = null;
+
+// Module-level ref for the most-recent panelID (shared with catalog.ts via import side-effect).
+// We track it here too so onAction can call clipboard.copyText when buttonID === 'copy'.
+let _lastPanelID: string | null = null;
 
 const allSections = galleryCapabilitySections;
 
@@ -66,6 +72,10 @@ async function handleInvoke(button: CapabilityButton): Promise<void> {
   const ts = new Date().toISOString();
   try {
     const result = await button.invoke();
+    // Track the most recent panelID so the onAction handler can use it.
+    if (result && typeof result === "object" && "panelID" in result) {
+      _lastPanelID = (result as { panelID: string }).panelID;
+    }
     pushEntry({ ts, api: button.apiSignature, result });
   } catch (err) {
     pushEntry({
@@ -81,7 +91,7 @@ function autofitButtonTitle(): string {
 }
 
 async function refreshHostStrip(): Promise<void> {
-  await pasty.attachmentRenderer.setButtons({
+  await clipbus.attachmentRenderer.setButtons({
     buttons: [
       { id: "expand", title: "Expand", isEnabled: true },
       { id: "compact", title: "Compact", isEnabled: true },
@@ -96,18 +106,18 @@ async function handleHostInvoke(detail: { buttonID?: string } | null | undefined
   const ts = new Date().toISOString();
 
   if (buttonID === "expand") {
-    await pasty.window.setHeight({ height: 480 });
-    pushEntry({ ts, api: "pasty.window.setHeight({ height })", args: { height: 480 }, result: "host-invoked" });
+    await clipbus.window.setHeight({ height: 480 });
+    pushEntry({ ts, api: "clipbus.window.setHeight({ height })", args: { height: 480 }, result: "host-invoked" });
     return;
   }
   if (buttonID === "compact") {
-    await pasty.window.setHeight({ height: 120 });
-    pushEntry({ ts, api: "pasty.window.setHeight({ height })", args: { height: 120 }, result: "host-invoked" });
+    await clipbus.window.setHeight({ height: 120 });
+    pushEntry({ ts, api: "clipbus.window.setHeight({ height })", args: { height: 120 }, result: "host-invoked" });
     return;
   }
   if (buttonID === "reset-height") {
-    await pasty.window.autoFit();
-    pushEntry({ ts, api: "pasty.window.autoFit()", args: {}, result: "host-invoked" });
+    await clipbus.window.autoFit();
+    pushEntry({ ts, api: "clipbus.window.autoFit()", args: {}, result: "host-invoked" });
     return;
   }
   if (buttonID === "autofit-toggle") {
@@ -134,12 +144,35 @@ async function handleHostInvoke(detail: { buttonID?: string } | null | undefined
 
 onMounted(async () => {
   await refreshHostStrip();
-  unsubHostInvoke = pasty.attachmentRenderer.onHostInvoke.on(handleHostInvoke);
+  unsubHostInvoke = clipbus.attachmentRenderer.onHostInvoke.on(handleHostInvoke);
+
+  unsubInfoPanelAction = clipbus.infoPanel.onAction.on((payload) => {
+    const ts = new Date().toISOString();
+    if (payload.buttonID === "copy") {
+      // Pure-notification model: the plugin handles its own side effect.
+      clipbus.clipboard.copyText({ text: `[infoPanel] panelID=${payload.panelID} copied @ ${ts}` });
+      pushEntry({ ts, api: "clipbus.infoPanel.onAction", result: { ...payload, sideEffect: "clipboard.copyText" } });
+    } else {
+      pushEntry({ ts, api: "clipbus.infoPanel.onAction", result: payload });
+    }
+  });
+
+  unsubInfoPanelClose = clipbus.infoPanel.onClose.on((payload) => {
+    const ts = new Date().toISOString();
+    if (_lastPanelID === payload.panelID) {
+      _lastPanelID = null;
+    }
+    pushEntry({ ts, api: "clipbus.infoPanel.onClose", result: payload });
+  });
 });
 
 onUnmounted(() => {
   unsubHostInvoke?.();
   unsubHostInvoke = null;
+  unsubInfoPanelAction?.();
+  unsubInfoPanelAction = null;
+  unsubInfoPanelClose?.();
+  unsubInfoPanelClose = null;
   disconnectAutoFit?.();
   disconnectAutoFit = null;
 });
@@ -169,14 +202,14 @@ onUnmounted(() => {
   font-size: 14px;
   font-weight: 700;
   letter-spacing: -0.01em;
-  color: var(--pasty-text-primary, #0f172a);
+  color: var(--clipbus-text-primary, #0f172a);
   line-height: 1.2;
 }
 
 .gallery-header__hint {
   margin: 0;
   font-size: 11px;
-  color: var(--pasty-text-tertiary, #64748b);
+  color: var(--clipbus-text-tertiary, #64748b);
   line-height: 1.4;
 }
 
@@ -185,6 +218,6 @@ onUnmounted(() => {
   font-size: 10.5px;
   padding: 1px 4px;
   border-radius: 4px;
-  background: var(--pasty-surface-elevated, rgba(248, 250, 252, 0.78));
+  background: var(--clipbus-surface-elevated, rgba(248, 250, 252, 0.78));
 }
 </style>

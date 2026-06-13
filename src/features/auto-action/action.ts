@@ -2,13 +2,13 @@
 // Auto-run action variants for the template plugin.
 // Migrated from src/runtime/actions/templateAutoAction.ts (§4d).
 
-import { actionResult } from "@pasty/plugin-sdk/runtime";
+import { actionResult } from "@clipbus/plugin-sdk/runtime";
 import type {
   PluginAutoRunActionHandler,
   PluginAutoRunActionInput,
   PluginActionOperationResult,
   PluginActionResolveResult,
-} from "@pasty/plugin-sdk/runtime";
+} from "@clipbus/plugin-sdk/runtime";
 
 // Template auto-run actions have no draft UI. After plugin-api-shrink (R13
 // strict handler), PluginAutoRunActionHandler requires both methods; provide

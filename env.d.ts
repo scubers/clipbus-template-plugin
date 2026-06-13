@@ -13,14 +13,14 @@ declare module "*.vue" {
 }
 
 // Preview-host (src/preview/) writes the post-shrink window globals onto
-// `window` to simulate what Pasty does at WebView load. The wire after
+// `window` to simulate what Clipbus does at WebView load. The wire after
 // plugin-api-shrink uses one global per topic (context / item / attachment /
-// theme / draft); the legacy unified __PASTY_PLUGIN_BOOTSTRAP__ /
-// __PASTY_PLUGIN_ACTION_BOOTSTRAP__ globals are gone.
+// theme / draft); the legacy unified __CLIPBUS_PLUGIN_BOOTSTRAP__ /
+// __CLIPBUS_PLUGIN_ACTION_BOOTSTRAP__ globals are gone.
 interface Window {
-  __PASTY_PLUGIN_CONTEXT__?: unknown;
-  __PASTY_PLUGIN_ITEM__?: unknown;
-  __PASTY_PLUGIN_ATTACHMENT__?: unknown;
-  __PASTY_PLUGIN_THEME__?: unknown;
-  __PASTY_PLUGIN_DRAFT__?: unknown;
+  __CLIPBUS_PLUGIN_CONTEXT__?: unknown;
+  __CLIPBUS_PLUGIN_ITEM__?: unknown;
+  __CLIPBUS_PLUGIN_ATTACHMENT__?: unknown;
+  __CLIPBUS_PLUGIN_THEME__?: unknown;
+  __CLIPBUS_PLUGIN_DRAFT__?: unknown;
 }

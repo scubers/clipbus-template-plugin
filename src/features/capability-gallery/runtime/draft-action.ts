@@ -1,18 +1,18 @@
 // Gallery draft action — provides 4 stable buttons covering:
-//   cycle-buttons     → dynamic pasty.action.setButtons demo
-//   complete-text     → actionResult-equivalent via pasty.action.complete
+//   cycle-buttons     → dynamic clipbus.action.setButtons demo
+//   complete-text     → actionResult-equivalent via clipbus.action.complete
 //   complete-image    → image resultKind via runtime RPC bridge
 //   complete-none     → none resultKind
 // The UI (draft-action-ui/app.vue) drives all four behaviours; runtime only
 // shapes the initial session.
 
-import { defineMessage, actionResult } from "@pasty/plugin-sdk/runtime";
+import { defineMessage, actionResult } from "@clipbus/plugin-sdk/runtime";
 import type {
   PluginAutoRunActionHandler,
   PluginActionOperationResult,
   PluginAutoRunActionInput,
   RuntimeMessageContract,
-} from "@pasty/plugin-sdk/runtime";
+} from "@clipbus/plugin-sdk/runtime";
 import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -73,7 +73,7 @@ export function createGalleryDraftAction(): PluginAutoRunActionHandler {
   };
 }
 
-// --- RPC handlers exposed to UI via pasty.runtime.invoke({ key }) -----------
+// --- RPC handlers exposed to UI via clipbus.runtime.invoke({ key }) -----------
 //
 // Each handler wraps one host.* method in a uniform { ok, result?, error? }
 // response so the UI's RuntimeBridgePanel can render a consistent log entry.
@@ -158,7 +158,7 @@ export function createGalleryMessageHandlers(): Record<string, MessageTuple[1]> 
       },
     ),
     // createSolidImage — Node generates a solid-color PNG, registers it through
-    // host.asset.registerImage, and returns the pasty-asset:// URL the WebView
+    // host.asset.registerImage, and returns the clipbus-asset:// URL the WebView
     // renders. Demonstrates the B (Node-produced image) path end-to-end.
     defineMessage<Record<string, never>, GallerySolidImageResponse>(GALLERY_RPC_KEYS.createSolidImage).handle(
       async (_req, ctx) => {
@@ -178,7 +178,7 @@ export function createGalleryMessageHandlers(): Record<string, MessageTuple[1]> 
         const png = solidColorPng(160, 160, rgb);
         const tmpPath = path.join(
           os.tmpdir(),
-          `pasty-gallery-solid-${Date.now()}-${Math.random().toString(36).slice(2)}.png`,
+          `clipbus.gallery-solid-${Date.now()}-${Math.random().toString(36).slice(2)}.png`,
         );
         await fs.writeFile(tmpPath, png);
         try {

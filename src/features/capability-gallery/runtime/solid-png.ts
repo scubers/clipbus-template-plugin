@@ -1,6 +1,6 @@
 // Zero-dependency solid-color PNG encoder.
 //
-// Used by the capability-gallery demo to prove the `pasty-asset://` rendering
+// Used by the capability-gallery demo to prove the `clipbus-asset://` rendering
 // path end-to-end: Node generates an image, registers it via
 // `host.asset.registerImage`, and the WebView displays the returned token URL.
 //

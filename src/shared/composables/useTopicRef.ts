@@ -1,5 +1,5 @@
 import { ref, onMounted, onUnmounted, type Ref } from 'vue';
-import { bindTopicTo, type TopicLike } from '@pasty/plugin-sdk/dom';
+import { bindTopicTo, type TopicLike } from '@clipbus/plugin-sdk/dom';
 
 /**
  * Bind a SDK Topic or OptionalTopic to a Vue readonly ref.
@@ -10,7 +10,7 @@ import { bindTopicTo, type TopicLike } from '@pasty/plugin-sdk/dom';
  *   path drift (e.g. `value?.attachment.payloadJson` vs `value?.payloadJson`).
  *
  * @example
- * const attachmentPayload = useTopicRef(pasty.item.attachment);
+ * const attachmentPayload = useTopicRef(clipbus.item.attachment);
  * const payloadJson = computed(() => attachmentPayload.value?.attachment.payloadJson);
  */
 export function useTopicRef<T>(topic: TopicLike<T>): Readonly<Ref<T | undefined>> {

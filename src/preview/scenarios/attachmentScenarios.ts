@@ -172,7 +172,7 @@ export const attachmentScenarios: AttachmentScenario[] = [
     id: "expanded-preview",
     label: "Expanded (Dynamic Height)",
     headline: "Template expanded preview",
-    subheadline: "Toggle Debug below to see pasty.window.autoFit drive pasty.window.setHeight as content grows.",
+    subheadline: "Toggle Debug below to see clipbus.window.autoFit drive clipbus.window.setHeight as content grows.",
     typeLabel: "Text",
     facts: [
       { label: "Lines", value: "3" },

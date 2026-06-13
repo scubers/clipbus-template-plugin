@@ -1,4 +1,4 @@
-// Pasty - Copyright (c) 2026. MIT License.
+// Clipbus - Copyright (c) 2026. MIT License.
 // Regression guard: input envelope migration (plugin-input-shape change).
 // Verifies detector / action contracts no longer rely on dataBase64 or item.text.
 
@@ -65,7 +65,7 @@ test("(b) image-only action calls materializeImagePath and path is valid", async
   ));
 
   const imageBytes = 512;
-  const tmpFile = path.join(os.tmpdir(), `pasty-test-img-${Date.now()}.png`);
+  const tmpFile = path.join(os.tmpdir(), `clipbus-test-img-${Date.now()}.png`);
   fs.writeFileSync(tmpFile, Buffer.alloc(imageBytes, 0xab));
 
   try {

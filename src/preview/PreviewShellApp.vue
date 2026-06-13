@@ -121,17 +121,17 @@ const activeDefaultButtonID = ref<string | null>(null);
 
 function previewHostButton(button: HostButton): void {
   // Post-shrink wire splits host-invoke into two streams keyed by context:
-  //   - action mode      → pasty-plugin-action-host-invoke
-  //   - attachmentRenderer mode → pasty-plugin-attachment-host-invoke
+  //   - action mode      → clipbus-plugin-action-host-invoke
+  //   - attachmentRenderer mode → clipbus-plugin-attachment-host-invoke
   // Both carry `{ buttonID }` (the `source: 'host'` field was removed in R10).
   const eventName = selectedView.value === "action"
-    ? "pasty-plugin-action-host-invoke"
-    : "pasty-plugin-attachment-host-invoke";
+    ? "clipbus-plugin-action-host-invoke"
+    : "clipbus-plugin-attachment-host-invoke";
   window.dispatchEvent(new CustomEvent(eventName, { detail: { buttonID: button.id } }));
 }
 
 onMounted(() => {
-  window.addEventListener("pasty-plugin-set-buttons", (e) => {
+  window.addEventListener("clipbus-plugin-set-buttons", (e) => {
     const ev = e as CustomEvent<{ buttons?: HostButton[]; defaultButtonID?: string | null }>;
     activeButtons.value = Array.isArray(ev.detail?.buttons) ? ev.detail.buttons : [];
     activeDefaultButtonID.value = ev.detail?.defaultButtonID ?? null;
@@ -254,19 +254,19 @@ function applyPreviewState(): void {
   const bootstrap = clone(scenario.bootstrap) as unknown as Record<string, unknown>;
 
   // Reset all post-shrink topic globals. The plugin-api-shrink change
-  // (commit cd2130cf) replaced the unified __PASTY_PLUGIN_BOOTSTRAP__ /
-  // __PASTY_PLUGIN_ACTION_BOOTSTRAP__ with one global per topic:
-  //   - __PASTY_PLUGIN_CONTEXT__   { mode, pluginID }
-  //   - __PASTY_PLUGIN_ITEM__      PluginClipboardItem
-  //   - __PASTY_PLUGIN_ATTACHMENT__ PluginAttachmentPayload     (attachmentRenderer mode only)
-  //   - __PASTY_PLUGIN_THEME__     PluginThemeTokenSnapshot
-  //   - __PASTY_PLUGIN_DRAFT__     Record<string, unknown>      (action mode only)
-  // (pasty-plugin-search and pasty-plugin-action-session were both deleted.)
-  window.__PASTY_PLUGIN_CONTEXT__ = null;
-  window.__PASTY_PLUGIN_ITEM__ = null;
-  window.__PASTY_PLUGIN_ATTACHMENT__ = null;
-  window.__PASTY_PLUGIN_THEME__ = null;
-  window.__PASTY_PLUGIN_DRAFT__ = null;
+  // (commit cd2130cf) replaced the unified __CLIPBUS_PLUGIN_BOOTSTRAP__ /
+  // __CLIPBUS_PLUGIN_ACTION_BOOTSTRAP__ with one global per topic:
+  //   - __CLIPBUS_PLUGIN_CONTEXT__   { mode, pluginID }
+  //   - __CLIPBUS_PLUGIN_ITEM__      PluginClipboardItem
+  //   - __CLIPBUS_PLUGIN_ATTACHMENT__ PluginAttachmentPayload     (attachmentRenderer mode only)
+  //   - __CLIPBUS_PLUGIN_THEME__     PluginThemeTokenSnapshot
+  //   - __CLIPBUS_PLUGIN_DRAFT__     Record<string, unknown>      (action mode only)
+  // (clipbus-plugin-search and clipbus-plugin-action-session were both deleted.)
+  window.__CLIPBUS_PLUGIN_CONTEXT__ = null;
+  window.__CLIPBUS_PLUGIN_ITEM__ = null;
+  window.__CLIPBUS_PLUGIN_ATTACHMENT__ = null;
+  window.__CLIPBUS_PLUGIN_THEME__ = null;
+  window.__CLIPBUS_PLUGIN_DRAFT__ = null;
 
   const pluginID = String(bootstrap.pluginID ?? "plugin.template.full");
   const themeSnapshot = buildThemeSnapshot(
@@ -280,32 +280,32 @@ function applyPreviewState(): void {
       item: bootstrap.item,
       attachment: bootstrap.attachment,
     };
-    window.__PASTY_PLUGIN_CONTEXT__ = context;
-    window.__PASTY_PLUGIN_ITEM__ = itemPayload;
-    window.__PASTY_PLUGIN_ATTACHMENT__ = attachmentPayload;
-    window.__PASTY_PLUGIN_THEME__ = themeSnapshot;
-    dispatchEvent("pasty-plugin-context", context);
-    dispatchEvent("pasty-plugin-item", itemPayload);
-    dispatchEvent("pasty-plugin-attachment", attachmentPayload);
-    dispatchEvent("pasty-plugin-theme", themeSnapshot);
+    window.__CLIPBUS_PLUGIN_CONTEXT__ = context;
+    window.__CLIPBUS_PLUGIN_ITEM__ = itemPayload;
+    window.__CLIPBUS_PLUGIN_ATTACHMENT__ = attachmentPayload;
+    window.__CLIPBUS_PLUGIN_THEME__ = themeSnapshot;
+    dispatchEvent("clipbus-plugin-context", context);
+    dispatchEvent("clipbus-plugin-item", itemPayload);
+    dispatchEvent("clipbus-plugin-attachment", attachmentPayload);
+    dispatchEvent("clipbus-plugin-theme", themeSnapshot);
     statusMessage.value = `Renderer preview loaded: ${scenario.label}`;
     return;
   }
 
   // Action view — no more PluginActionSession injection. Wire only carries
   // context + item + draft + theme; the action plugin self-renders its title
-  // and button strip via pasty.action.setButtons after load.
+  // and button strip via clipbus.action.setButtons after load.
   const context = { mode: "action", pluginID };
   const itemPayload = bootstrap.item;
   const draftPayload = bootstrap.draft ?? {};
-  window.__PASTY_PLUGIN_CONTEXT__ = context;
-  window.__PASTY_PLUGIN_ITEM__ = itemPayload;
-  window.__PASTY_PLUGIN_DRAFT__ = draftPayload;
-  window.__PASTY_PLUGIN_THEME__ = themeSnapshot;
-  dispatchEvent("pasty-plugin-context", context);
-  dispatchEvent("pasty-plugin-item", itemPayload);
-  dispatchEvent("pasty-plugin-draft", draftPayload);
-  dispatchEvent("pasty-plugin-theme", themeSnapshot);
+  window.__CLIPBUS_PLUGIN_CONTEXT__ = context;
+  window.__CLIPBUS_PLUGIN_ITEM__ = itemPayload;
+  window.__CLIPBUS_PLUGIN_DRAFT__ = draftPayload;
+  window.__CLIPBUS_PLUGIN_THEME__ = themeSnapshot;
+  dispatchEvent("clipbus-plugin-context", context);
+  dispatchEvent("clipbus-plugin-item", itemPayload);
+  dispatchEvent("clipbus-plugin-draft", draftPayload);
+  dispatchEvent("clipbus-plugin-theme", themeSnapshot);
   statusMessage.value = `Action preview loaded: ${scenario.label}`;
 }
 

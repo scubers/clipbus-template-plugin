@@ -2,7 +2,7 @@
 // Preview renderer handler for the template attachment type.
 // See: openspec/changes/plugin-sdk-template-opt §4.3
 
-import type { PluginAttachmentRendererHandler, PluginResolveAttachmentInput, PluginAttachmentResolveResult } from "@pasty/plugin-sdk/runtime";
+import type { PluginAttachmentRendererHandler, PluginResolveAttachmentInput, PluginAttachmentResolveResult } from "@clipbus/plugin-sdk/runtime";
 import { decodeTemplatePreviewPayload } from "./payload.ts";
 
 function resolveAttachment(input: PluginResolveAttachmentInput): PluginAttachmentResolveResult {

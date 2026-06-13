@@ -17,7 +17,7 @@ async function exists(relativePath) {
 }
 
 async function resolveNpmExecutable() {
-  const configured = process.env.PASTY_PLUGIN_NPM_PATH;
+  const configured = process.env.CLIPBUS_PLUGIN_NPM_PATH;
   if (configured) {
     try {
       await access(configured);

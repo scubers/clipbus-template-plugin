@@ -9,7 +9,7 @@
 // `syncAttachmentRenderArea` and wipes the renderer's UI-side
 // `setButtons` override. Keep keys and payload fields stable per (item, kind).
 
-import type { PluginDetectorHandler, PluginDetectorInput, PluginDetectorArtifact } from "@pasty/plugin-sdk/runtime";
+import type { PluginDetectorHandler, PluginDetectorInput, PluginDetectorArtifact } from "@clipbus/plugin-sdk/runtime";
 import {
   GALLERY_ATTACHMENT_TYPES,
   encodeGalleryPayload,

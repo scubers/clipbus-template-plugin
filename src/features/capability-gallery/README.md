@@ -73,7 +73,7 @@ That's **23 verbs total**: 19 base + 1 attachment + 3 action. The contract
 test at `tests/integration/galleryWiring.test.cjs` enforces that every entry
 above appears as a button (or programmatic call) in the gallery catalogs.
 
-### Image asset rendering (`pasty.asset`)
+### Image asset rendering (`clipbus.asset`)
 
 Image display sits outside the button-grid matrix above — an image needs to be
 *shown*, not logged — so it lives in a dedicated `ImagePanel` component rather
@@ -86,13 +86,13 @@ than a catalog button:
 
 The button asks the Node runtime to generate a random solid-color PNG
 (`runtime/solid-png.ts`, a zero-dep encoder), register it via
-`host.asset.registerImage`, and hand back the `pasty-asset://` URL the WebView
+`host.asset.registerImage`, and hand back the `clipbus-asset://` URL the WebView
 renders in an `<img>`.
 
 > **Coverage gap:** the third asset verb, `asset.pathReferenceImageUrl`, is
 > **not** demonstrated — it needs a clipboard `path_reference` item pointing at
 > an image file, which the gallery detector does not set up. Its usage is
-> identical to `currentItemImageUrl`: `await pasty.asset.pathReferenceImageUrl({ index })`.
+> identical to `currentItemImageUrl`: `await clipbus.asset.pathReferenceImageUrl({ index })`.
 
 ### Host-event coverage
 
@@ -102,7 +102,7 @@ renders in an `<img>`.
 | 2 | `item` | bounded-ui · TopicMonitor; auto-ui · header snapshot |
 | 3 | `item.attachment` | bounded-ui · TopicMonitor; fixed-ui snapshot |
 | 4 | `item.search` | bounded-ui · TopicMonitor; fixed-ui snapshot |
-| 5 | `actionSession` (`pasty.action`) | draft-action-ui · actionSession panel |
+| 5 | `actionSession` (`clipbus.action`) | draft-action-ui · actionSession panel |
 | 6 | `action.draft` | draft-action-ui · draft form + JSON snapshot |
 | 7 | `theme` | bounded-ui · TopicMonitor; fixed-ui snapshot |
 | 8 | `attachmentRenderer.onHostInvoke` (stream) | bounded-ui · log panel (expand/compact/reset-height triggers) |
@@ -113,14 +113,14 @@ renders in an `<img>`.
 1. Build the plugin: `npm run build`.
 2. Install via your usual host flow (the gallery is part of the same
    template-plugin manifest — it ships alongside the four sample features).
-3. Copy any **text**, **image**, or **file path** to the Pasty clipboard.
+3. Copy any **text**, **image**, or **file path** to the Clipbus clipboard.
 4. The gallery detector emits three attachments — `Gallery: fixed`,
    `Gallery: auto`, `Gallery: bounded` — onto the same item. Each opens a
    different renderer demonstrating a height shape.
 5. The bounded renderer is the main stage: click the buttons in each section
    and watch the log panel. The Runtime bridge panel proves that the same
    capability surface exists on the Node runtime side and is callable from
-   the UI via `pasty.runtime.invoke`.
+   the UI via `clipbus.runtime.invoke`.
 6. From the host action menu, four new actions appear under "Gallery":
    - **Gallery Auto (text / image / none)** — auto-run actions that emit one
      of the three `actionResult` shapes.

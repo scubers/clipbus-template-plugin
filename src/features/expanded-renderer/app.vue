@@ -4,12 +4,12 @@
       <!--
         Accent strip uses an inline style driven by tokenSnapshot.accent. CSS
         var() would normally be enough, but this single decoration demonstrates
-        the pasty.theme.on() API for cases (canvas, JS-computed colors)
+        the clipbus.theme.on() API for cases (canvas, JS-computed colors)
         where CSS var() is not enough.
       -->
       <div
         class="expanded-panel__accent"
-        :style="{ backgroundColor: accentHex || 'var(--pasty-accent, #2563EB)' }"
+        :style="{ backgroundColor: accentHex || 'var(--clipbus-accent, #2563EB)' }"
         aria-hidden="true"
       />
 
@@ -61,7 +61,7 @@
           {{ showDebug ? "Hide Debug" : "Show Debug" }}
         </button>
         <span class="expanded-panel__hint">
-          Card height follows content. Toggle Debug to see autoFit drive pasty.window.setHeight.
+          Card height follows content. Toggle Debug to see autoFit drive clipbus.window.setHeight.
         </span>
       </footer>
     </section>
@@ -77,15 +77,15 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
-import { pasty } from "@pasty/plugin-sdk/ui";
-import { autoFit } from "@pasty/plugin-sdk/dom";
+import { clipbus } from "@clipbus/plugin-sdk/ui";
+import { autoFit } from "@clipbus/plugin-sdk/dom";
 import { useTopicRef } from "../../shared/composables/useTopicRef";
 import { decodeTemplateExpandedPayload } from "./payload";
 import type { TemplateExpandedPayload, TemplateExpandedExtended } from "./payload";
-import type { PluginAttachmentPayload } from "@pasty/plugin-sdk/ui";
+import type { PluginAttachmentPayload } from "@clipbus/plugin-sdk/ui";
 
-const attachmentPayload = useTopicRef(pasty.item.attachment);
-const themeTopic = useTopicRef(pasty.theme);
+const attachmentPayload = useTopicRef(clipbus.item.attachment);
+const themeTopic = useTopicRef(clipbus.theme);
 
 const payload = computed<TemplateExpandedPayload | null>(() =>
   decodeTemplateExpandedPayload((attachmentPayload.value as PluginAttachmentPayload | undefined)?.attachment?.payloadJson)
@@ -93,7 +93,7 @@ const payload = computed<TemplateExpandedPayload | null>(() =>
 
 const accentHex = computed<string | null>(() => {
   const tokens = (themeTopic.value as any)?.tokens as Record<string, string> | undefined;
-  return tokens?.["--pasty-accent"] ?? null;
+  return tokens?.["--clipbus-accent"] ?? null;
 });
 
 const showDebug = ref<boolean>(false);
@@ -106,7 +106,7 @@ async function handleRendererAction(detail: { buttonID?: string } | null | undef
   if (buttonID === "toggle-debug") {
     toggleDebug();
   } else if (buttonID === "copy-debug-json") {
-    await pasty.clipboard.copyText({ text: debugBlock.value });
+    await clipbus.clipboard.copyText({ text: debugBlock.value });
   }
 }
 
@@ -134,20 +134,20 @@ async function attachAutoFitIfReady(): Promise<void> {
 }
 
 onMounted(async () => {
-  await pasty.attachmentRenderer.setButtons({ buttons: [
+  await clipbus.attachmentRenderer.setButtons({ buttons: [
     { id: "toggle-debug", title: showDebug.value ? "Hide Debug" : "Show Debug", isEnabled: true },
     { id: "copy-debug-json", title: "Copy Debug JSON", isEnabled: true },
   ]});
 
   watch(showDebug, async (visible) => {
-    await pasty.attachmentRenderer.setButtons({ buttons: [
+    await clipbus.attachmentRenderer.setButtons({ buttons: [
       { id: "toggle-debug", title: visible ? "Hide Debug" : "Show Debug", isEnabled: true },
       { id: "copy-debug-json", title: "Copy Debug JSON", isEnabled: true },
     ]});
   });
 
   // Subscribe to host action invocations (e.g. "toggle-debug" button)
-  unsubHostInvoke = pasty.attachmentRenderer.onHostInvoke.on(handleRendererAction);
+  unsubHostInvoke = clipbus.attachmentRenderer.onHostInvoke.on(handleRendererAction);
 
   // Fires immediately for sync-available bootstrap; otherwise fires when the
   // attachment topic fires after didFinish.
@@ -199,10 +199,10 @@ const debugBlock = computed<string>(() => {
   border-radius: 18px;
   background: linear-gradient(
     180deg,
-    var(--pasty-surface, #ffffff),
-    var(--pasty-surface-elevated, #f5f5f5)
+    var(--clipbus-surface, #ffffff),
+    var(--clipbus-surface-elevated, #f5f5f5)
   );
-  border: 1px solid var(--pasty-border, rgba(148, 163, 184, 0.3));
+  border: 1px solid var(--clipbus-border, rgba(148, 163, 184, 0.3));
   box-shadow: 0 10px 28px rgba(15, 23, 42, 0.12);
   overflow: hidden;
 }
@@ -228,7 +228,7 @@ const debugBlock = computed<string>(() => {
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--pasty-text-tertiary, #64748b);
+  color: var(--clipbus-text-tertiary, #64748b);
 }
 
 .expanded-panel__title {
@@ -236,7 +236,7 @@ const debugBlock = computed<string>(() => {
   font-size: 17px;
   line-height: 1.18;
   letter-spacing: -0.02em;
-  color: var(--pasty-text-primary, #0f172a);
+  color: var(--clipbus-text-primary, #0f172a);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -244,7 +244,7 @@ const debugBlock = computed<string>(() => {
 
 .expanded-panel__subtitle {
   margin: 0;
-  color: var(--pasty-text-secondary, #475569);
+  color: var(--clipbus-text-secondary, #475569);
   font-size: 12px;
   line-height: 1.4;
 }
@@ -263,8 +263,8 @@ const debugBlock = computed<string>(() => {
   margin: 0;
   padding: 6px 10px;
   border-radius: 10px;
-  background: var(--pasty-surface-elevated, rgba(248, 250, 252, 0.78));
-  border: 1px solid var(--pasty-border, rgba(226, 232, 240, 0.9));
+  background: var(--clipbus-surface-elevated, rgba(248, 250, 252, 0.78));
+  border: 1px solid var(--clipbus-border, rgba(226, 232, 240, 0.9));
 }
 
 .expanded-panel__fact dt {
@@ -273,14 +273,14 @@ const debugBlock = computed<string>(() => {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--pasty-text-tertiary, #64748b);
+  color: var(--clipbus-text-tertiary, #64748b);
 }
 
 .expanded-panel__fact dd {
   margin: 0;
   font-size: 12px;
   font-weight: 600;
-  color: var(--pasty-text-primary, #0f172a);
+  color: var(--clipbus-text-primary, #0f172a);
   line-height: 1.3;
   white-space: nowrap;
   overflow: hidden;
@@ -292,8 +292,8 @@ const debugBlock = computed<string>(() => {
   gap: 6px;
   padding: 8px 10px;
   border-radius: 10px;
-  background: var(--pasty-surface-elevated, rgba(248, 250, 252, 0.78));
-  border: 1px solid var(--pasty-border, rgba(226, 232, 240, 0.9));
+  background: var(--clipbus-surface-elevated, rgba(248, 250, 252, 0.78));
+  border: 1px solid var(--clipbus-border, rgba(226, 232, 240, 0.9));
 }
 
 .expanded-panel__section-label {
@@ -302,7 +302,7 @@ const debugBlock = computed<string>(() => {
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--pasty-text-tertiary, #64748b);
+  color: var(--clipbus-text-tertiary, #64748b);
 }
 
 .expanded-panel__meta-row {
@@ -317,11 +317,11 @@ const debugBlock = computed<string>(() => {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   font-size: 10px;
-  color: var(--pasty-text-tertiary, #64748b);
+  color: var(--clipbus-text-tertiary, #64748b);
 }
 
 .expanded-panel__meta-value {
-  color: var(--pasty-text-primary, #0f172a);
+  color: var(--clipbus-text-primary, #0f172a);
   font-weight: 600;
 }
 
@@ -334,8 +334,8 @@ const debugBlock = computed<string>(() => {
 .expanded-panel__chip {
   padding: 3px 9px;
   border-radius: 999px;
-  background: var(--pasty-accent, #2563EB);
-  color: var(--pasty-accent-contrast, #ffffff);
+  background: var(--clipbus-accent, #2563EB);
+  color: var(--clipbus-accent-contrast, #ffffff);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -347,8 +347,8 @@ const debugBlock = computed<string>(() => {
   gap: 6px;
   padding: 8px 10px;
   border-radius: 10px;
-  border: 1px dashed var(--pasty-border, rgba(148, 163, 184, 0.5));
-  background: var(--pasty-surface, transparent);
+  border: 1px dashed var(--clipbus-border, rgba(148, 163, 184, 0.5));
+  background: var(--clipbus-surface, transparent);
 }
 
 .expanded-panel__debug-body {
@@ -356,7 +356,7 @@ const debugBlock = computed<string>(() => {
   font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
   font-size: 10px;
   line-height: 1.4;
-  color: var(--pasty-text-secondary, #475569);
+  color: var(--clipbus-text-secondary, #475569);
   white-space: pre-wrap;
   word-break: break-all;
   max-height: 220px;
@@ -373,9 +373,9 @@ const debugBlock = computed<string>(() => {
 
 .expanded-panel__toggle {
   appearance: none;
-  border: 1px solid var(--pasty-border, rgba(148, 163, 184, 0.5));
-  background: var(--pasty-surface-elevated, #f1f5f9);
-  color: var(--pasty-text-primary, #0f172a);
+  border: 1px solid var(--clipbus-border, rgba(148, 163, 184, 0.5));
+  background: var(--clipbus-surface-elevated, #f1f5f9);
+  color: var(--clipbus-text-primary, #0f172a);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -385,13 +385,13 @@ const debugBlock = computed<string>(() => {
 }
 
 .expanded-panel__toggle:focus-visible {
-  outline: 2px solid var(--pasty-accent, #2563EB);
+  outline: 2px solid var(--clipbus-accent, #2563EB);
   outline-offset: 2px;
 }
 
 .expanded-panel__hint {
   flex: 1 1 220px;
-  color: var(--pasty-text-tertiary, #64748b);
+  color: var(--clipbus-text-tertiary, #64748b);
   font-size: 11px;
   line-height: 1.4;
 }
@@ -408,12 +408,12 @@ const debugBlock = computed<string>(() => {
   margin: 0;
   font-size: 17px;
   font-weight: 700;
-  color: var(--pasty-text-primary, #0f172a);
+  color: var(--clipbus-text-primary, #0f172a);
 }
 
 .empty-state__body {
   margin: 8px 0 0;
-  color: var(--pasty-text-secondary, #475569);
+  color: var(--clipbus-text-secondary, #475569);
   font-size: 13px;
   line-height: 1.45;
 }

@@ -4,13 +4,13 @@
       <p class="draft-shell__eyebrow">Gallery · draft action</p>
       <h1 class="draft-shell__title">Action-scope capability tour</h1>
       <p class="draft-shell__subtitle">
-        Covers <code>pasty.action.setButtons</code> and the 3 <code>complete()</code> result kinds.
-        Host-side buttons fire <code>pasty.action.onHostInvoke</code>.
+        Covers <code>clipbus.action.setButtons</code> and the 3 <code>complete()</code> result kinds.
+        Host-side buttons fire <code>clipbus.action.onHostInvoke</code>.
       </p>
     </header>
 
     <section class="draft-shell__panel">
-      <p class="draft-shell__section-label">draft (pasty.action.draft)</p>
+      <p class="draft-shell__section-label">draft (clipbus.action.draft)</p>
       <div class="draft-shell__form">
         <label class="draft-shell__field">
           <span>scratchText</span>
@@ -35,8 +35,9 @@
         completes the draft (or cycles host buttons).
       </p>
       <div class="draft-shell__grid">
+        <!-- Baseline capabilities: always available, no has() guard needed. -->
         <button
-          v-for="button in galleryActionCapabilities"
+          v-for="button in galleryActionCapabilities.filter(b => !b.id.startsWith('infopanel'))"
           :key="button.id"
           class="draft-shell__btn"
           type="button"
@@ -46,12 +47,31 @@
           <code class="draft-shell__btn-api">{{ button.apiSignature }}</code>
           <span class="draft-shell__btn-desc">{{ button.description }}</span>
         </button>
+
+        <!-- infoPanel: 新能力，调用前先用 clipbus.capabilities.has() 门控。 -->
+        <!-- 老版宿主未提供 infoPanel 时 has() 返回 false，此区块隐藏并显示降级提示。 -->
+        <template v-if="infoPanelSupported">
+          <button
+            v-for="button in galleryActionCapabilities.filter(b => b.id.startsWith('infopanel'))"
+            :key="button.id"
+            class="draft-shell__btn"
+            type="button"
+            @click="handleClick(button)"
+          >
+            <strong class="draft-shell__btn-label">{{ button.label }}</strong>
+            <code class="draft-shell__btn-api">{{ button.apiSignature }}</code>
+            <span class="draft-shell__btn-desc">{{ button.description }}</span>
+          </button>
+        </template>
+        <p v-else class="draft-shell__capability-unavailable">
+          infoPanel 需要更新版 Clipbus（当前宿主不支持 <code>infoPanel.open</code>）
+        </p>
       </div>
     </section>
 
     <section class="draft-shell__panel">
       <p class="draft-shell__section-label">image asset</p>
-      <p class="draft-shell__hint">Current clipboard image (<code>pasty.asset.currentItemImageUrl</code>):</p>
+      <p class="draft-shell__hint">Current clipboard image (<code>clipbus.asset.currentItemImageUrl</code>):</p>
       <img
         v-if="currentImageUrl"
         :src="currentImageUrl"
@@ -65,7 +85,7 @@
         @click="generateSolidImage"
       >
         <strong class="draft-shell__btn-label">Generate solid image (Node)</strong>
-        <code class="draft-shell__btn-api">pasty.runtime.invoke(createSolidImage)</code>
+        <code class="draft-shell__btn-api">clipbus.runtime.invoke(createSolidImage)</code>
       </button>
       <img
         v-if="generatedImageUrl"
@@ -93,8 +113,8 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
-import type { PluginActionSetButtonsPayload } from "@pasty/plugin-sdk/ui";
-import { pasty } from "@pasty/plugin-sdk/ui";
+import type { PluginActionSetButtonsPayload } from "@clipbus/plugin-sdk/ui";
+import { clipbus, CapabilityUnsupportedError } from "@clipbus/plugin-sdk/ui";
 import { useTopicRef } from "../../../shared/composables/useTopicRef";
 import { decodeGalleryDraft, type GalleryDraft } from "../runtime/draft";
 import { GALLERY_RPC_KEYS, type GallerySolidImageResponse } from "../runtime/messages";
@@ -107,11 +127,15 @@ interface LogEntry {
   error?: boolean;
 }
 
-const draftTopic = useTopicRef(pasty.action.draft);
+// 能力检测：infoPanel 是宿主新能力，调用前先门控。
+// 老宿主未注入清单时 has() 恒 false，安全降级。
+const infoPanelSupported = clipbus.capabilities.has('infoPanel.open');
+
+const draftTopic = useTopicRef(clipbus.action.draft);
 
 const draft = reactive<GalleryDraft>({ scratchText: "", buttonsConfigVariant: "default" });
 
-const initialRaw = pasty.action.draft.current();
+const initialRaw = clipbus.action.draft.current();
 if (initialRaw) {
   Object.assign(draft, decodeGalleryDraft(initialRaw));
 }
@@ -162,38 +186,38 @@ function nextVariant(current: GalleryDraft["buttonsConfigVariant"]): GalleryDraf
 async function cycleButtons(): Promise<void> {
   const next = nextVariant(draft.buttonsConfigVariant);
   draft.buttonsConfigVariant = next;
-  await pasty.action.setButtons({ buttons: BUTTON_VARIANTS[next] });
-  pushLog({ ts: new Date().toISOString(), api: "pasty.action.setButtons", detail: `variant=${next}` });
+  await clipbus.action.setButtons({ buttons: BUTTON_VARIANTS[next] });
+  pushLog({ ts: new Date().toISOString(), api: "clipbus.action.setButtons", detail: `variant=${next}` });
 }
 
 async function completeText(): Promise<void> {
   const text = draft.scratchText.trim().length > 0
     ? draft.scratchText
     : `Gallery draft text result @ ${new Date().toLocaleString()}`;
-  await pasty.action.complete({ result: { resultKind: "text", text }, userMessage: "Gallery: text complete" });
-  pushLog({ ts: new Date().toISOString(), api: "pasty.action.complete", detail: "resultKind=text" });
+  await clipbus.action.complete({ result: { resultKind: "text", text }, userMessage: "Gallery: text complete" });
+  pushLog({ ts: new Date().toISOString(), api: "clipbus.action.complete", detail: "resultKind=text" });
 }
 
 async function completeImage(): Promise<void> {
   const ts = new Date().toISOString();
   try {
-    const response = await pasty.runtime.invoke<{ imageTempPath: string; imageFormatHint: string }>({
+    const response = await clipbus.runtime.invoke<{ imageTempPath: string; imageFormatHint: string }>({
       key: GALLERY_RPC_KEYS.copyImageFlow,
       payload: {},
     });
-    pushLog({ ts, api: "pasty.runtime.invoke(copyImageFlow)", detail: response?.imageTempPath ?? "<no path>" });
+    pushLog({ ts, api: "clipbus.runtime.invoke(copyImageFlow)", detail: response?.imageTempPath ?? "<no path>" });
     if (!response?.imageTempPath) {
       throw new Error("runtime returned no imageTempPath");
     }
-    await pasty.action.complete({
+    await clipbus.action.complete({
       result: { resultKind: "image", imageTempPath: response.imageTempPath, imageFormatHint: response.imageFormatHint },
       userMessage: "Gallery: image complete",
     });
-    pushLog({ ts: new Date().toISOString(), api: "pasty.action.complete", detail: "resultKind=image" });
+    pushLog({ ts: new Date().toISOString(), api: "clipbus.action.complete", detail: "resultKind=image" });
   } catch (err) {
     pushLog({
       ts,
-      api: "pasty.action.complete(image)",
+      api: "clipbus.action.complete(image)",
       detail: err instanceof Error ? err.message : String(err),
       error: true,
     });
@@ -201,8 +225,63 @@ async function completeImage(): Promise<void> {
 }
 
 async function completeNone(): Promise<void> {
-  await pasty.action.complete({ result: { resultKind: "none" }, userMessage: "Gallery: none complete" });
-  pushLog({ ts: new Date().toISOString(), api: "pasty.action.complete", detail: "resultKind=none" });
+  await clipbus.action.complete({ result: { resultKind: "none" }, userMessage: "Gallery: none complete" });
+  pushLog({ ts: new Date().toISOString(), api: "clipbus.action.complete", detail: "resultKind=none" });
+}
+
+async function openInfoPanel(): Promise<void> {
+  const ts = new Date().toISOString();
+  try {
+    const result = await clipbus.infoPanel.open({
+      document: {
+        icon: "⚡",
+        title: "Action Gallery Panel",
+        subtitle: "Opened from the draft action surface",
+        badges: ["action", "gallery"],
+        blocks: [
+          { type: "label", text: "Context" },
+          { type: "fields", fields: [
+            { key: "Surface", value: "draft action" },
+            { key: "scratchText", value: draft.scratchText || "(empty)" },
+            { key: "Variant", value: draft.buttonsConfigVariant },
+          ]},
+          { type: "divider" },
+          { type: "text", text: "This panel was opened from clipbus.infoPanel.open inside the draft action UI.", style: "body" },
+          { type: "text", text: "Buttons fire onAction events back to the plugin.", style: "muted" },
+          { type: "code", text: JSON.stringify({ ts, surface: "action" }, null, 2), language: "json" },
+          { type: "tags", tags: ["action", "info-panel", "demo"] },
+        ],
+        actions: [
+          { id: "copy", label: "Copy Info", isPrimary: true },
+          { id: "dismiss", label: "Dismiss" },
+        ],
+      },
+    });
+    _lastInfoPanelID = result.panelID;
+    pushLog({ ts, api: "clipbus.infoPanel.open", detail: `panelID=${result.panelID}` });
+  } catch (err) {
+    // 调用兜底示范：UI 侧可用 instanceof 识别能力不支持错误（跨 WebView 边界，SDK 保证是同一类实例）。
+    if (err instanceof CapabilityUnsupportedError) {
+      pushLog({ ts, api: "clipbus.infoPanel.open", detail: `capability not supported: ${err.capability}`, error: true });
+      return;
+    }
+    pushLog({ ts, api: "clipbus.infoPanel.open", detail: err instanceof Error ? err.message : String(err), error: true });
+  }
+}
+
+async function closeInfoPanel(): Promise<void> {
+  const ts = new Date().toISOString();
+  if (!_lastInfoPanelID) {
+    pushLog({ ts, api: "clipbus.infoPanel.close", detail: "skipped — no panel opened yet" });
+    return;
+  }
+  try {
+    await clipbus.infoPanel.close({ panelID: _lastInfoPanelID });
+    pushLog({ ts, api: "clipbus.infoPanel.close", detail: `panelID=${_lastInfoPanelID}` });
+    _lastInfoPanelID = null;
+  } catch (err) {
+    pushLog({ ts, api: "clipbus.infoPanel.close", detail: err instanceof Error ? err.message : String(err), error: true });
+  }
 }
 
 async function handleClick(button: GalleryActionButton): Promise<void> {
@@ -210,6 +289,8 @@ async function handleClick(button: GalleryActionButton): Promise<void> {
   if (button.id === "action-complete-text") return completeText();
   if (button.id === "action-complete-image") return completeImage();
   if (button.id === "action-complete-none") return completeNone();
+  if (button.id === "infopanel-open") return openInfoPanel();
+  if (button.id === "infopanel-close") return closeInfoPanel();
 }
 
 const currentImageUrl = ref<string | null>(null);
@@ -218,13 +299,13 @@ const generatedImageUrl = ref<string | null>(null);
 async function loadCurrentItemImage(): Promise<void> {
   const ts = new Date().toISOString();
   try {
-    const response = await pasty.asset.currentItemImageUrl();
+    const response = await clipbus.asset.currentItemImageUrl();
     currentImageUrl.value = response.url ?? null;
-    pushLog({ ts, api: "pasty.asset.currentItemImageUrl()", detail: response.url ?? "(no url)" });
+    pushLog({ ts, api: "clipbus.asset.currentItemImageUrl()", detail: response.url ?? "(no url)" });
   } catch (err) {
     pushLog({
       ts,
-      api: "pasty.asset.currentItemImageUrl()",
+      api: "clipbus.asset.currentItemImageUrl()",
       detail: err instanceof Error ? err.message : String(err),
       error: true,
     });
@@ -234,16 +315,16 @@ async function loadCurrentItemImage(): Promise<void> {
 async function generateSolidImage(): Promise<void> {
   const ts = new Date().toISOString();
   try {
-    const response = await pasty.runtime.invoke<GallerySolidImageResponse>({
+    const response = await clipbus.runtime.invoke<GallerySolidImageResponse>({
       key: GALLERY_RPC_KEYS.createSolidImage,
       payload: {},
     });
     generatedImageUrl.value = response.url;
-    pushLog({ ts, api: `pasty.runtime.invoke({ key: "${GALLERY_RPC_KEYS.createSolidImage}" })`, detail: response.url });
+    pushLog({ ts, api: `clipbus.runtime.invoke({ key: "${GALLERY_RPC_KEYS.createSolidImage}" })`, detail: response.url });
   } catch (err) {
     pushLog({
       ts,
-      api: `pasty.runtime.invoke({ key: "${GALLERY_RPC_KEYS.createSolidImage}" })`,
+      api: `clipbus.runtime.invoke({ key: "${GALLERY_RPC_KEYS.createSolidImage}" })`,
       detail: err instanceof Error ? err.message : String(err),
       error: true,
     });
@@ -251,12 +332,15 @@ async function generateSolidImage(): Promise<void> {
 }
 
 let unsubHostInvoke: (() => void) | null = null;
+let unsubInfoPanelAction: (() => void) | null = null;
+let unsubInfoPanelClose: (() => void) | null = null;
+let _lastInfoPanelID: string | null = null;
 
 async function handleHostInvoke(detail: { buttonID?: string } | null | undefined): Promise<void> {
   const buttonID = detail?.buttonID;
   pushLog({
     ts: new Date().toISOString(),
-    api: "pasty.action.onHostInvoke",
+    api: "clipbus.action.onHostInvoke",
     detail: `buttonID=${buttonID ?? "<none>"}`,
   });
   if (buttonID === "cycle-buttons") return cycleButtons();
@@ -266,9 +350,30 @@ async function handleHostInvoke(detail: { buttonID?: string } | null | undefined
 }
 
 onMounted(async () => {
-  await pasty.action.setButtons({ buttons: BUTTON_VARIANTS[draft.buttonsConfigVariant] });
-  unsubHostInvoke = pasty.action.onHostInvoke.on(handleHostInvoke);
+  await clipbus.action.setButtons({ buttons: BUTTON_VARIANTS[draft.buttonsConfigVariant] });
+  unsubHostInvoke = clipbus.action.onHostInvoke.on(handleHostInvoke);
   await loadCurrentItemImage();
+
+  // infoPanel demo 按钮已按 `infoPanelSupported` 门控；事件监听这里无条件注册即可——
+  // `clipbus.infoPanel` 命名空间恒在，宿主不支持时这些流永不触发（惰性、无副作用）。
+  unsubInfoPanelAction = clipbus.infoPanel.onAction.on((payload) => {
+    const ts = new Date().toISOString();
+    if (payload.buttonID === "copy") {
+      // Pure-notification model: the plugin does its own side effect.
+      clipbus.clipboard.copyText({ text: `[infoPanel/action] panelID=${payload.panelID} @ ${ts}` });
+      pushLog({ ts, api: "clipbus.infoPanel.onAction", detail: `buttonID=${payload.buttonID} → clipboard.copyText` });
+    } else {
+      pushLog({ ts, api: "clipbus.infoPanel.onAction", detail: `buttonID=${payload.buttonID} panelID=${payload.panelID}` });
+    }
+  });
+
+  unsubInfoPanelClose = clipbus.infoPanel.onClose.on((payload) => {
+    const ts = new Date().toISOString();
+    if (_lastInfoPanelID === payload.panelID) {
+      _lastInfoPanelID = null;
+    }
+    pushLog({ ts, api: "clipbus.infoPanel.onClose", detail: `panelID=${payload.panelID}` });
+  });
 });
 
 onUnmounted(() => {
@@ -276,6 +381,10 @@ onUnmounted(() => {
     unsubHostInvoke();
     unsubHostInvoke = null;
   }
+  unsubInfoPanelAction?.();
+  unsubInfoPanelAction = null;
+  unsubInfoPanelClose?.();
+  unsubInfoPanelClose = null;
 });
 </script>
 
@@ -289,8 +398,8 @@ onUnmounted(() => {
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  background: var(--pasty-surface, #ffffff);
-  color: var(--pasty-text-primary, #0f172a);
+  background: var(--clipbus-surface, #ffffff);
+  color: var(--clipbus-text-primary, #0f172a);
   font-size: 12px;
 }
 
@@ -305,7 +414,7 @@ onUnmounted(() => {
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--pasty-text-tertiary, #64748b);
+  color: var(--clipbus-text-tertiary, #64748b);
 }
 
 .draft-shell__title {
@@ -313,12 +422,12 @@ onUnmounted(() => {
   font-size: 16px;
   font-weight: 700;
   letter-spacing: -0.01em;
-  color: var(--pasty-text-primary, #0f172a);
+  color: var(--clipbus-text-primary, #0f172a);
 }
 
 .draft-shell__subtitle {
   margin: 0;
-  color: var(--pasty-text-secondary, #475569);
+  color: var(--clipbus-text-secondary, #475569);
   font-size: 11px;
   line-height: 1.45;
 }
@@ -328,16 +437,16 @@ onUnmounted(() => {
   font-size: 10.5px;
   padding: 1px 4px;
   border-radius: 4px;
-  background: var(--pasty-surface-elevated, rgba(248, 250, 252, 0.78));
+  background: var(--clipbus-surface-elevated, rgba(248, 250, 252, 0.78));
 }
 
 .draft-shell__panel {
   display: grid;
   gap: 6px;
   padding: 10px 12px;
-  border: 1px solid var(--pasty-border, rgba(226, 232, 240, 0.9));
+  border: 1px solid var(--clipbus-border, rgba(226, 232, 240, 0.9));
   border-radius: 10px;
-  background: var(--pasty-surface-elevated, rgba(248, 250, 252, 0.78));
+  background: var(--clipbus-surface-elevated, rgba(248, 250, 252, 0.78));
 }
 
 .draft-shell__panel-head {
@@ -353,14 +462,14 @@ onUnmounted(() => {
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--pasty-text-tertiary, #64748b);
+  color: var(--clipbus-text-tertiary, #64748b);
 }
 
 .draft-shell__chip {
   padding: 2px 8px;
   border-radius: 999px;
-  background: var(--pasty-accent, #2563EB);
-  color: var(--pasty-accent-contrast, #ffffff);
+  background: var(--clipbus-accent, #2563EB);
+  color: var(--clipbus-accent-contrast, #ffffff);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -371,7 +480,7 @@ onUnmounted(() => {
   font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
   font-size: 10px;
   line-height: 1.4;
-  color: var(--pasty-text-secondary, #475569);
+  color: var(--clipbus-text-secondary, #475569);
   white-space: pre-wrap;
   word-break: break-all;
   max-height: 140px;
@@ -393,14 +502,14 @@ onUnmounted(() => {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--pasty-text-tertiary, #64748b);
+  color: var(--clipbus-text-tertiary, #64748b);
 }
 
 .draft-shell__input {
   width: 100%;
-  border: 1px solid var(--pasty-border, rgba(148, 163, 184, 0.5));
-  background: var(--pasty-surface, #ffffff);
-  color: var(--pasty-text-primary, #0f172a);
+  border: 1px solid var(--clipbus-border, rgba(148, 163, 184, 0.5));
+  background: var(--clipbus-surface, #ffffff);
+  color: var(--clipbus-text-primary, #0f172a);
   font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
   font-size: 11px;
   padding: 4px 6px;
@@ -409,7 +518,7 @@ onUnmounted(() => {
 
 .draft-shell__hint {
   margin: 0;
-  color: var(--pasty-text-tertiary, #64748b);
+  color: var(--clipbus-text-tertiary, #64748b);
   font-size: 10.5px;
 }
 
@@ -424,35 +533,35 @@ onUnmounted(() => {
   gap: 2px;
   text-align: left;
   padding: 8px 10px;
-  border: 1px solid var(--pasty-border, rgba(148, 163, 184, 0.5));
+  border: 1px solid var(--clipbus-border, rgba(148, 163, 184, 0.5));
   border-radius: 8px;
-  background: var(--pasty-surface, #ffffff);
+  background: var(--clipbus-surface, #ffffff);
   cursor: pointer;
 }
 
 .draft-shell__btn:hover {
-  background: var(--pasty-surface-elevated, #f1f5f9);
+  background: var(--clipbus-surface-elevated, #f1f5f9);
 }
 
 .draft-shell__btn:focus-visible {
-  outline: 2px solid var(--pasty-accent, #2563EB);
+  outline: 2px solid var(--clipbus-accent, #2563EB);
   outline-offset: 2px;
 }
 
 .draft-shell__btn-label {
   font-size: 11px;
-  color: var(--pasty-text-primary, #0f172a);
+  color: var(--clipbus-text-primary, #0f172a);
 }
 
 .draft-shell__btn-api {
   font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
   font-size: 9.5px;
-  color: var(--pasty-text-tertiary, #64748b);
+  color: var(--clipbus-text-tertiary, #64748b);
 }
 
 .draft-shell__btn-desc {
   font-size: 10px;
-  color: var(--pasty-text-secondary, #475569);
+  color: var(--clipbus-text-secondary, #475569);
 }
 
 .draft-shell__img {
@@ -460,7 +569,7 @@ onUnmounted(() => {
   max-height: 120px;
   object-fit: contain;
   border-radius: 6px;
-  border: 1px solid var(--pasty-border, rgba(226, 232, 240, 0.9));
+  border: 1px solid var(--clipbus-border, rgba(226, 232, 240, 0.9));
   align-self: flex-start;
 }
 
@@ -468,7 +577,7 @@ onUnmounted(() => {
   margin: 0;
   font-size: 11px;
   font-style: italic;
-  color: var(--pasty-text-tertiary, #64748b);
+  color: var(--clipbus-text-tertiary, #64748b);
 }
 
 .draft-shell__btn--image {
@@ -476,7 +585,7 @@ onUnmounted(() => {
 }
 
 .draft-shell__panel--log {
-  background: var(--pasty-surface, #ffffff);
+  background: var(--clipbus-surface, #ffffff);
 }
 
 .draft-shell__log {
@@ -496,7 +605,7 @@ onUnmounted(() => {
   align-items: baseline;
   font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
   font-size: 10px;
-  color: var(--pasty-text-secondary, #475569);
+  color: var(--clipbus-text-secondary, #475569);
 }
 
 .draft-shell__log-entry--error {
@@ -504,16 +613,31 @@ onUnmounted(() => {
 }
 
 .draft-shell__log-ts {
-  color: var(--pasty-text-tertiary, #64748b);
+  color: var(--clipbus-text-tertiary, #64748b);
 }
 
 .draft-shell__log-api {
-  color: var(--pasty-text-primary, #0f172a);
+  color: var(--clipbus-text-primary, #0f172a);
 }
 
 .draft-shell__log-empty {
   grid-column: 1 / -1;
-  color: var(--pasty-text-tertiary, #64748b);
+  color: var(--clipbus-text-tertiary, #64748b);
   font-style: italic;
+}
+
+.draft-shell__capability-unavailable {
+  margin: 0;
+  padding: 8px 10px;
+  font-size: 10.5px;
+  font-style: italic;
+  color: var(--clipbus-text-tertiary, #64748b);
+  border: 1px dashed var(--clipbus-border, rgba(148, 163, 184, 0.5));
+  border-radius: 8px;
+}
+
+.draft-shell__capability-unavailable code {
+  font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
 }
 </style>

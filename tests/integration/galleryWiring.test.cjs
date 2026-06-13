@@ -61,9 +61,9 @@ function loadBoundedCatalogVerbs() {
   const verbs = new Set();
   for (const section of galleryCapabilitySections) {
     for (const button of section.buttons) {
-      // apiSignature is shaped like "pasty.item.addTags({ tags })" — extract
-      // the dotted verb between `pasty.` and the opening paren.
-      const match = String(button.apiSignature || '').match(/^pasty\.([a-zA-Z0-9_.]+)\(/);
+      // apiSignature is shaped like "clipbus.item.addTags({ tags })" — extract
+      // the dotted verb between `clipbus.` and the opening paren.
+      const match = String(button.apiSignature || '').match(/^clipbus\.([a-zA-Z0-9_.]+)\(/);
       if (match) verbs.add(match[1]);
     }
   }
@@ -91,7 +91,7 @@ function loadDraftCatalogVerbs() {
   const verbs = new Set();
   const resultKinds = new Set();
   for (const button of galleryActionCapabilities) {
-    const match = String(button.apiSignature || '').match(/^pasty\.([a-zA-Z0-9_.]+)\(/);
+    const match = String(button.apiSignature || '').match(/^clipbus\.([a-zA-Z0-9_.]+)\(/);
     if (match) verbs.add(match[1]);
     if (button.resultKind) resultKinds.add(button.resultKind);
   }
@@ -114,7 +114,7 @@ function loadDraftCatalogVerbs() {
 // `renderer-bounded-ui/catalog.ts`.
 // NOTE: item.setTags/addTags/removeTags/setPinned/setSearchExtension/materializeImagePath
 // were moved to Node-runtime-only (host.item.*) in the plugin-api-shrink rollout.
-// They are no longer available in the UI pasty.* namespace and are not shown in
+// They are no longer available in the UI clipbus.* namespace and are not shown in
 // the bounded-ui catalog.
 // NOTE: `item.setAttachments` is intentionally excluded from the gallery demo
 // — the SDK has no clear-all variant, and core's parseReplaceRequest rejects
@@ -135,6 +135,8 @@ const EXPECTED_BASE_VERBS = new Set([
   'settings.getAll',
   'console.log',
   'textInput.stateChanged',
+  'infoPanel.open',
+  'infoPanel.close',
 ]);
 
 const EXPECTED_ACTION_VERBS = new Set([
@@ -243,7 +245,7 @@ describe('plugin-show-case wiring', () => {
     const previousWebkit = globalThis.webkit;
     globalThis.webkit = {
       messageHandlers: {
-        pastyPluginCall: {
+        clipbusPluginCall: {
           postMessage: async (frame) => {
             calls.push(frame);
             if (frame.method === 'runtime.invoke') {

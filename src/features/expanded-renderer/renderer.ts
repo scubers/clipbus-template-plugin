@@ -2,7 +2,7 @@
 // Expanded renderer handler for the template attachment type.
 // See: openspec/changes/plugin-sdk-template-opt §4b.12
 
-import type { PluginAttachmentRendererHandler, PluginResolveAttachmentInput, PluginAttachmentResolveResult } from "@pasty/plugin-sdk/runtime";
+import type { PluginAttachmentRendererHandler, PluginResolveAttachmentInput, PluginAttachmentResolveResult } from "@clipbus/plugin-sdk/runtime";
 import { decodeTemplateExpandedPayload } from "./payload.ts";
 
 function resolveAttachment(input: PluginResolveAttachmentInput): PluginAttachmentResolveResult {

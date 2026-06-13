@@ -2,7 +2,7 @@
 // Single source of truth for the template preview attachment payload.
 // See: openspec/changes/plugin-sdk-template-opt §4.1
 
-import type { PluginContentEnvelope, PluginClipboardItem, PluginDetectorArtifact } from "@pasty/plugin-sdk/runtime";
+import type { PluginContentEnvelope, PluginClipboardItem, PluginDetectorArtifact } from "@clipbus/plugin-sdk/runtime";
 import type { DisplayInfo } from "../../shared/display.ts";
 import { buildContentDisplay, buildSearchText, decodeDisplayInfo, mapContentKind } from "../../shared/display.ts";
 import { cloneJSON } from "../../shared/debug.ts";

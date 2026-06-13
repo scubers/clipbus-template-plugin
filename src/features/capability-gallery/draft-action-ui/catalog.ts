@@ -1,5 +1,5 @@
 // Single source of truth for the draft-action capability gallery.
-// Covers the 3 action-scope verbs and the 3 resultKinds of pasty.action.complete.
+// Covers the 3 action-scope verbs and the 3 resultKinds of clipbus.action.complete.
 //
 // IMPORTANT: when the SDK adds an action-scope verb, add a button here and
 // update EXPECTED_ACTION_VERBS in galleryWiring.test.cjs.
@@ -17,28 +17,40 @@ export const galleryActionCapabilities: GalleryActionButton[] = [
   {
     id: "action-setButtons",
     label: "setButtons (cycle variant)",
-    apiSignature: "pasty.action.setButtons({ buttons })",
+    apiSignature: "clipbus.action.setButtons({ buttons })",
     description: "Replace the host-side button strip dynamically by cycling buttonsConfigVariant.",
   },
   {
     id: "action-complete-text",
     label: "complete (text)",
-    apiSignature: "pasty.action.complete({ result, userMessage })",
+    apiSignature: "clipbus.action.complete({ result, userMessage })",
     resultKind: "text",
     description: "Finish the draft and emit a text resultKind back to the host.",
   },
   {
     id: "action-complete-image",
     label: "complete (image)",
-    apiSignature: "pasty.action.complete({ result, userMessage })",
+    apiSignature: "clipbus.action.complete({ result, userMessage })",
     resultKind: "image",
     description: "Bridge runtime.invoke for materialize+copy, then emit image resultKind.",
   },
   {
     id: "action-complete-none",
     label: "complete (none)",
-    apiSignature: "pasty.action.complete({ result, userMessage })",
+    apiSignature: "clipbus.action.complete({ result, userMessage })",
     resultKind: "none",
     description: "Finish with side-effects only; emit none resultKind.",
+  },
+  {
+    id: "infopanel-open",
+    label: "infoPanel.open",
+    apiSignature: "clipbus.infoPanel.open({ document })",
+    description: "Open a rich info panel from the action surface. Buttons fire onAction events.",
+  },
+  {
+    id: "infopanel-close",
+    label: "infoPanel.close",
+    apiSignature: "clipbus.infoPanel.close({ panelID })",
+    description: "Close the last-opened info panel (no-op if none).",
   },
 ];
