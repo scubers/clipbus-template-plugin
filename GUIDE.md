@@ -1,117 +1,117 @@
-# 插件开发指南（脚手架工作流）
+# Plugin Development Guide (Scaffold Workflow)
 
-本工程（`plugins/template-plugin/`）是 Clipbus 三方插件的**脚手架与可运行示例**。本文件只讲**脚手架工作流**（起步、本地开发、在 Clipbus 中调试、构建、测试）与**工程结构**。
+*English · [中文](./GUIDE_zh.md)*
 
-**插件开发的权威知识**（架构、manifest、SDK 入口、detector/renderer/action、入参形状、RPC、权限、坑点）**随 SDK 包发布**，`npm install` 后在 `node_modules/@clipbus/plugin-sdk/docs/`——它始终对应你当前安装的 SDK 版本。
+This project (`plugins/template-plugin/`) is the **scaffold and runnable example** for Clipbus third-party plugins. This file covers only the **scaffold workflow** (getting started, local development, debugging inside Clipbus, building, testing) and the **project structure**.
 
-- **AI / 工具**：请先读本工程根目录的 [`AGENTS.md`](./AGENTS.md)，它指向 SDK 文档的稳定入口。
-- **文档地图**：`node_modules/@clipbus/plugin-sdk/docs/README.md`
-- **capability 真相源**：`node_modules/@clipbus/plugin-sdk/API.md`（generated，有冲突以它为准）
-- 通过 `npm update @clipbus/plugin-sdk` 刷新文档与能力，**无需替换本工程任何文件**。
+**The authoritative knowledge for plugin development** (architecture, manifest, SDK entry points, detector/renderer/action, input shapes, RPC, permissions, pitfalls) **ships with the SDK package**. After `npm install` it lives in `node_modules/@clipbus/plugin-sdk/docs/` — and always matches the SDK version you currently have installed.
 
-> 本工程内的代码与说明是**示例**，可能滞后于已安装的 SDK；与 SDK 文档冲突时**以 SDK 文档为准**。
+- **AI / tools**: read this project's root [`AGENTS.md`](./AGENTS.md) first; it points to the stable entry point of the SDK docs.
+- **Documentation map**: `node_modules/@clipbus/plugin-sdk/docs/README.md`
+- **Capability source of truth**: `node_modules/@clipbus/plugin-sdk/API.md` (generated; in case of conflict, it wins)
+- Refresh the docs and capabilities via `npm update @clipbus/plugin-sdk` — **no need to replace any file in this project**.
+
+> The code and notes inside this project are **examples** and may lag behind the installed SDK; when they conflict with the SDK docs, **the SDK docs win**.
 
 ---
 
-## 0. 快速开始
+## 0. Quick start
 
-### 前置条件
+### Prerequisites
 
 - Node.js >= 18
 
-### 初始化
+### Initialize
 
 ```sh
 npm install
 ```
 
-依赖 `@clipbus/plugin-sdk` 是独立发布的 npm 包（三方工程通过 `npm install @clipbus/plugin-sdk` 安装）。`npm install` 会拉取并编译 SDK，完成后即可直接使用。
+The dependency `@clipbus/plugin-sdk` is an independently published npm package (third-party projects install it via `npm install @clipbus/plugin-sdk`). `npm install` fetches and compiles the SDK; once it finishes, you can use it directly.
 
-> 所有插件作者可用的符号由 codegen 产出，列在 SDK 包的 `API.md` 与 `README.md`（见 [`@clipbus/plugin-sdk`](https://www.npmjs.com/package/@clipbus/plugin-sdk)）。**插件作者不需要查看或修改 SDK 内部源码。**
+> All symbols available to plugin authors are produced by codegen and listed in the SDK package's `API.md` and `README.md` (see [`@clipbus/plugin-sdk`](https://www.npmjs.com/package/@clipbus/plugin-sdk)). **Plugin authors do not need to view or modify the SDK's internal source.**
 
-### 本地开发
+### Local development
 
 ```sh
 npm run dev
 ```
 
-启动 Vite 预览工作台（Preview Workbench）。工作台模拟宿主推送 bootstrap，提供两个视图：
+Starts the Vite Preview Workbench. The workbench simulates the host pushing a bootstrap and offers two views:
 
-- `?view=renderer` — 预览 attachment renderer 卡片
-- `?view=action` — 预览 draft action 表单
+- `?view=renderer` — preview the attachment renderer card
+- `?view=action` — preview the draft action form
 
-修改 `src/features/*/app.vue` 后浏览器热更新。
+The browser hot-reloads after you edit `src/features/*/app.vue`.
 
-也可以直接打开单一视图：
+You can also open a single view directly:
 
 ```sh
 npm run dev:renderer
 npm run dev:action
 ```
 
-### 在 Clipbus 中调试
+### Debugging inside Clipbus
 
-Clipbus → Settings → Plugins → Developer Plugins 区段提供开发插件生命周期管理：
+Clipbus → Settings → Plugins → the Developer Plugins section provides lifecycle management for development plugins:
 
-1. **Add Path** — 选择含 `manifest.json` 的目录（即 `sourceRootPath`）。
-2. 若 `manifest.json` 声明了 `install` 字段，Clipbus **自动执行安装脚本**，工作目录为 `sourceRootPath`。`node_modules/` 等产物落到工程目录（等价于你手动 `npm install`）。
-3. 安装日志写入 `<AppData>/development-plugins/<pluginID>/install-logs/`，不会污染你的 git status。
+1. **Add Path** — select the directory containing `manifest.json` (i.e. the `sourceRootPath`).
+2. If `manifest.json` declares an `install` field, Clipbus **runs the install script automatically**, with the working directory set to `sourceRootPath`. Artifacts such as `node_modules/` land in the project directory (equivalent to running `npm install` yourself).
+3. Install logs are written to `<AppData>/development-plugins/<pluginID>/install-logs/` and will not pollute your git status.
 
-| 按钮 | 行为 |
+| Button | Behavior |
 |---|---|
-| **重新加载** | 重读 `manifest.json`，刷新 fingerprint / permissions / loadState。**不**重跑 install。 |
-| **执行安装** | 就地重跑 install hook，更新 `lastInstallExecution`。**不**重读 manifest。 |
-| **查看日志** | `installFailed` 状态下显示，打开最近一次安装日志（支持实时 tail）。 |
+| **Reload** | Re-reads `manifest.json`, refreshing fingerprint / permissions / loadState. Does **not** re-run install. |
+| **Run Install** | Re-runs the install hook in place and updates `lastInstallExecution`. Does **not** re-read the manifest. |
+| **View Logs** | Shown in the `installFailed` state; opens the most recent install log (supports live tail). |
 
-状态：`installing` → 安装中；`installFailed` → 退出码非 0 或 runtime 不可达；`ready` → 可用。
+States: `installing` → installing; `installFailed` → non-zero exit code or runtime unreachable; `ready` → usable.
 
-### 生产构建
+### Production build
 
 ```sh
 npm run build
 ```
 
-依次：clean → build:runtime → build:ui → verify:build，输出到 `dist/`。
+In order: clean → build:runtime → build:ui → verify:build, output to `dist/`.
 
-### 测试
+### Testing
 
 ```sh
-npm test         # tests/runtime/ 集成测试
+npm test         # integration tests under tests/runtime/
 ```
 
 ---
 
-## 1. 工程结构
+## 1. Project structure
 
-新插件按 feature 切分，每个 feature 一个自洽目录。推荐布局：
+A new plugin is split by feature, each feature a self-contained directory. Recommended layout:
 
 ```text
 your-plugin/
 ├── manifest.json
-├── package.json                        ← 依赖 @clipbus/plugin-sdk（npm 安装）
+├── package.json                        ← depends on @clipbus/plugin-sdk (npm install)
 ├── scripts/                            ← build:runtime / build:ui / verify:build
 ├── src/
-│   ├── features/<feature-name>/        ← 每个能力一个文件夹
-│   │   ├── payload.ts                  ← 数据类型 / draft 类型
-│   │   ├── detector.ts                 ← detector（若有）
-│   │   ├── renderer.ts                 ← renderer runtime 端（若有）
-│   │   ├── action.ts                   ← action runtime 端（若有）
-│   │   ├── app.vue                     ← UI 入口（renderer 或 draft action）
-│   │   ├── main.ts / index.html        ← Vite 入口
-│   ├── shared/                         ← 跨 feature 的薄工具层
-│   ├── preview/                        ← 本地预览工作台（dev-only）
-│   └── plugin.ts                       ← definePlugin 入口；注册所有 handler
+│   ├── features/<feature-name>/        ← one folder per capability
+│   │   ├── payload.ts                  ← data types / draft types
+│   │   ├── detector.ts                 ← detector (if any)
+│   │   ├── renderer.ts                 ← renderer runtime side (if any)
+│   │   ├── action.ts                   ← action runtime side (if any)
+│   │   ├── app.vue                     ← UI entry (renderer or draft action)
+│   │   ├── main.ts / index.html        ← Vite entry
+│   ├── shared/                         ← thin utility layer across features
+│   ├── preview/                        ← local preview workbench (dev-only)
+│   └── plugin.ts                       ← definePlugin entry; registers all handlers
 └── tests/runtime/
 ```
 
-template-plugin 自带的具体 feature 列表（`preview-renderer/` / `expanded-renderer/` / `auto-action/` / `capability-gallery/`）见 [README.md](./README.md) "演示的能力"。
+For template-plugin's concrete feature list (`preview-renderer/` / `expanded-renderer/` / `auto-action/` / `capability-gallery/`), see the "Capabilities demonstrated" section in [README.md](./README.md).
 
-> SDK 是独立包 `@clipbus/plugin-sdk`，由 codegen 同步、**不要手动改**。扩展 capability 见包内 `SPECIFICATION.md`（[`@clipbus/plugin-sdk`](https://www.npmjs.com/package/@clipbus/plugin-sdk)）Ch 3。
+> The SDK is a standalone package `@clipbus/plugin-sdk`, synced by codegen — **do not edit it by hand**. To extend capabilities see the package's `SPECIFICATION.md` ([`@clipbus/plugin-sdk`](https://www.npmjs.com/package/@clipbus/plugin-sdk)), Ch 3.
 
 ---
 
-## 接下来
+## Next steps
 
-脚手架工作流就这些。**插件实现的全部知识在 SDK 文档**——见根目录 [`AGENTS.md`](./AGENTS.md)，或直接打开 `node_modules/@clipbus/plugin-sdk/docs/README.md`（文档地图）与 `node_modules/@clipbus/plugin-sdk/API.md`（capability 真相源）。
-
-
+That's all for the scaffold workflow. **All the knowledge for implementing a plugin lives in the SDK docs** — see the root [`AGENTS.md`](./AGENTS.md), or open `node_modules/@clipbus/plugin-sdk/docs/README.md` (documentation map) and `node_modules/@clipbus/plugin-sdk/API.md` (capability source of truth) directly.

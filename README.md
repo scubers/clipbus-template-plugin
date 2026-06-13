@@ -1,113 +1,115 @@
 # Template Plugin
 
-> 写新插件先看 [GUIDE.md](./GUIDE.md)。它和本工程一起就是开发 Clipbus 插件的完整起步资料。
+*English · [中文](./README_zh.md)*
 
-`template-plugin/` 是给三方插件作者和 AI 助手准备的**最小全功能**模板工程，演示了 Clipbus 当前所有的扩展点：detector、attachment renderer（compact + expanded）、auto-run action、draft action，依赖独立发布的 SDK 包 `@clipbus/plugin-sdk`。
+> Read [GUIDE.md](./GUIDE.md) before writing a new plugin. Together with this project, it is the complete starter kit for developing Clipbus plugins.
 
-只需要这一个工程就能开发出生产可用的 Clipbus 插件——架构、API、字段约束都以代码为真相源，文档同步更新。
+`template-plugin/` is a **minimal yet full-featured** template project for third-party plugin authors and AI assistants. It demonstrates every extension point Clipbus currently offers: detector, attachment renderer (compact + expanded), auto-run action, and draft action. It depends on the independently published SDK package `@clipbus/plugin-sdk`.
 
-## 三份必读文档
+This single project is all you need to build a production-ready Clipbus plugin — architecture, APIs, and field constraints all use code as the source of truth, with the docs kept in sync.
 
-| 文档 | 用途 |
+## Three must-read documents
+
+| Document | Purpose |
 |---|---|
-| [GUIDE.md](./GUIDE.md) | 插件开发完整指南：快速开始、架构、manifest、三类入口实现、入参形状、权限模型、坑点 Q&A |
-| `API.md`（随 [`@clipbus/plugin-sdk`](https://www.npmjs.com/package/@clipbus/plugin-sdk) 发布） | 由 `protocol/plugin/src/catalog.ts` 自动生成的 API 真相源：26 个 capability、7 个 host event、22 个命名类型的精确签名 |
-| `SPECIFICATION.md`（随 [`@clipbus/plugin-sdk`](https://www.npmjs.com/package/@clipbus/plugin-sdk) 发布） | SDK 形状规则（Topic / OptionalTopic / Stream / Verb）、命名约定、扩展 capability 的 PR 流程 |
+| [GUIDE.md](./GUIDE.md) | Complete plugin development guide: quick start, architecture, manifest, the three entry-point types, input shapes, permission model, pitfall Q&A |
+| `API.md` (published with [`@clipbus/plugin-sdk`](https://www.npmjs.com/package/@clipbus/plugin-sdk)) | The API source of truth, auto-generated from `protocol/plugin/src/catalog.ts`: precise signatures for 26 capabilities, 7 host events, and 22 named types |
+| `SPECIFICATION.md` (published with [`@clipbus/plugin-sdk`](https://www.npmjs.com/package/@clipbus/plugin-sdk)) | SDK shape rules (Topic / OptionalTopic / Stream / Verb), naming conventions, and the PR process for extending capabilities |
 
-> SDK 包内的 `API.md` 是**镜像文件**。运行 `cd protocol/plugin && npm run codegen` 时由 codegen 自动同步——文档与 catalog 不会漂移。
+> The `API.md` inside the SDK package is a **mirror file**. It is synced automatically by codegen when you run `cd protocol/plugin && npm run codegen` — the docs never drift from the catalog.
 
-## 工程结构
+## Project structure
 
 ```text
 template-plugin/
 ├── manifest.json
-├── package.json                        ← 依赖 @clipbus/plugin-sdk（独立 npm 包）
+├── package.json                        ← depends on @clipbus/plugin-sdk (standalone npm package)
 ├── scripts/
 │   ├── build-runtime.mjs
 │   ├── build-ui.mjs
 │   └── verify-build.mjs
 ├── src/
-│   ├── features/                       ← 每个能力一个文件夹
+│   ├── features/                       ← one folder per capability
 │   │   ├── preview-renderer/           ← detector + compact renderer + Vue app
-│   │   ├── expanded-renderer/          ← detector + 自适应高度 renderer + Vue app
-│   │   ├── auto-action/                ← auto-run action（无 UI）
-│   │   └── capability-gallery/         ← SDK 全能力演示参考（含 draft action）
-│   ├── shared/                         ← 跨 feature 的薄共享层
+│   │   ├── expanded-renderer/          ← detector + adaptive-height renderer + Vue app
+│   │   ├── auto-action/                ← auto-run action (no UI)
+│   │   └── capability-gallery/         ← full-capability SDK demo reference (includes a draft action)
+│   ├── shared/                         ← thin shared layer across features
 │   │   ├── display.ts
 │   │   └── debug.ts
-│   ├── preview/                        ← 本地预览工作台（dev-only）
+│   ├── preview/                        ← local preview workbench (dev-only)
 │   │   ├── PreviewShellApp.vue
 │   │   ├── scenarios/
 │   │   └── preview-host/
-│   └── plugin.ts                       ← definePlugin 入口
+│   └── plugin.ts                       ← definePlugin entry
 └── tests/runtime/
     └── templateCapabilities.test.cjs
 ```
 
-## 演示的能力
+## Capabilities demonstrated
 
 ### detector
 
-- 文件：`src/features/preview-renderer/detector.ts` + `src/features/expanded-renderer/detector.ts`
-- 输入：`text`、`image`、`path_reference`（三 kind 全覆盖）
-- 输出：`plugin.template.full.preview` 与 `plugin.template.full.expanded` attachment
-- 演示：用 `PluginContentEnvelope` / `PluginClipboardItem` 强类型处理三种 input kind，统一映射成 artifact
+- Files: `src/features/preview-renderer/detector.ts` + `src/features/expanded-renderer/detector.ts`
+- Input: `text`, `image`, `path_reference` (all three kinds covered)
+- Output: `plugin.template.full.preview` and `plugin.template.full.expanded` attachments
+- Demonstrates: using the strongly-typed `PluginContentEnvelope` / `PluginClipboardItem` to handle all three input kinds, mapping them uniformly into an artifact
 
-### attachment renderer（compact，固定高度）
+### attachment renderer (compact, fixed height)
 
-- 文件：`src/features/preview-renderer/renderer.ts` + `src/features/preview-renderer/app.vue`
-- 演示：`resolveAttachment()`、`clipbus.attachmentRenderer.onHostInvoke`、固定 `height: 320`、12 个 theme token 主题适配
+- Files: `src/features/preview-renderer/renderer.ts` + `src/features/preview-renderer/app.vue`
+- Demonstrates: `resolveAttachment()`, `clipbus.attachmentRenderer.onHostInvoke`, fixed `height: 320`, theme adaptation across 12 theme tokens
 
-### attachment renderer（expanded，自适应高度 + 主题事件）
+### attachment renderer (expanded, adaptive height + theme events)
 
-- 文件：`src/features/expanded-renderer/renderer.ts` + `src/features/expanded-renderer/app.vue`
-- 演示：manifest `height: { min: 120, max: 480 }` + `clipbus.window.autoFit()` + `clipbus.theme.on()` 驱动强调条颜色
+- Files: `src/features/expanded-renderer/renderer.ts` + `src/features/expanded-renderer/app.vue`
+- Demonstrates: manifest `height: { min: 120, max: 480 }` + `clipbus.window.autoFit()` + `clipbus.theme.on()` driving the accent-bar color
 
 ### auto-run action
 
-- 文件：`src/features/auto-action/action.ts`
-- 演示：无 UI action，runtime 完全闭环，返回 `actionResult.text(...)`/`actionResult.none(...)` 形态的执行上下文
+- File: `src/features/auto-action/action.ts`
+- Demonstrates: a UI-less action with a fully self-contained runtime, returning execution contexts in the `actionResult.text(...)` / `actionResult.none(...)` shapes
 
-模板还声明了 `template-auto-action-text` / `template-auto-action-image` 两个子变体，用于演示超出免费配额后的 Plugin Pro 门控行为（manifest 共 4 个 action，超过默认配额 3 个）。
+The template also declares two sub-variants, `template-auto-action-text` / `template-auto-action-image`, to demonstrate the Plugin Pro gating behavior once you exceed the free quota (the manifest declares 4 actions in total, over the default quota of 3).
 
 ### draft action
 
-- 文件：`src/features/capability-gallery/runtime/draft-action.ts` + `src/features/capability-gallery/draft-action-ui/app.vue`（manifest id：`gallery-draft`）
-- 演示：`resolveSession` 返回 `initialDraft` + buttons seed → UI 自管表单状态 → `clipbus.action.complete(...)` 提交
+- Files: `src/features/capability-gallery/runtime/draft-action.ts` + `src/features/capability-gallery/draft-action-ui/app.vue` (manifest id: `gallery-draft`)
+- Demonstrates: `resolveSession` returning `initialDraft` + a buttons seed → the UI manages its own form state → submitting via `clipbus.action.complete(...)`
 
-### capability-gallery（全集合 API 参考）
+### capability-gallery (full API reference)
 
-- 目录：`src/features/capability-gallery/`（详见 [`src/features/capability-gallery/README.md`](./src/features/capability-gallery/README.md)）
-- 角色：与上面 4 个最小样板互补的 "SDK 全能力演示" feature——覆盖 26 个 capability 中的 25 个（仅 `asset.pathReferenceImageUrl` 未单独演示）、7 个 host event、4 个 permission、3 种 height 形态、3 种 actionResult 形态、3 种 item kind
-- 包含：1 detector（×3 attachment）+ 3 个 auto-run action + 1 draft action + 3 个 attachment renderer + 4 个 WebView（bounded 主舞台 + fixed + auto + draft-action）
-- 图片展示：bounded renderer 与 draft action 经 `clipbus.asset.currentItemImageUrl()` 取 `clipbus-asset://` URL 在 `<img>` 显示当前 item 图，并经 `host.asset.registerImage()` 显示 Node 产出的纯色图（见 [GUIDE.md](./GUIDE.md) §6.6）
-- 用途：三方插件作者想"这个 SDK 到底能做什么"的可点击参考
+- Directory: `src/features/capability-gallery/` (see [`src/features/capability-gallery/README.md`](./src/features/capability-gallery/README.md) for details)
+- Role: a "full SDK capability demo" feature that complements the four minimal samples above — covering 25 of the 26 capabilities (only `asset.pathReferenceImageUrl` is not demonstrated separately), 7 host events, 4 permissions, 3 height shapes, 3 actionResult shapes, and 3 item kinds
+- Contains: 1 detector (×3 attachments) + 3 auto-run actions + 1 draft action + 3 attachment renderers + 4 WebViews (bounded main stage + fixed + auto + draft-action)
+- Image display: the bounded renderer and the draft action use `clipbus.asset.currentItemImageUrl()` to obtain a `clipbus-asset://` URL and show the current item's image in an `<img>`, and use `host.asset.registerImage()` to display a solid-color image produced by Node (see [GUIDE.md](./GUIDE.md) §6.6)
+- Use case: a clickable reference for third-party plugin authors wondering "what exactly can this SDK do?"
 
-## 起步改造清单
+## Getting-started customization checklist
 
-最先改这几处，避免 manifest 与 runtime 脱节：
+Change these first, to keep the manifest and runtime from drifting apart:
 
-1. `manifest.json`——`plugin.id`、`title`、`attachmentType`、capability 列表
-2. `src/plugin.ts`——注册的 handler key 必须与 manifest `id` 完全一致
-3. `src/features/<feature>/payload.ts`（数据类型定义）
-4. `src/features/<feature>/detector.ts`（detector 处理）
-5. `src/features/<feature>/renderer.ts`（renderer runtime 处理）
-6. `src/features/<feature>/action.ts`（action 处理）
-7. `src/features/<feature>/app.vue`（对应的 UI 入口）
+1. `manifest.json` — `plugin.id`, `title`, `attachmentType`, capability list
+2. `src/plugin.ts` — the registered handler keys must match the manifest `id` exactly
+3. `src/features/<feature>/payload.ts` (data type definitions)
+4. `src/features/<feature>/detector.ts` (detector logic)
+5. `src/features/<feature>/renderer.ts` (renderer runtime logic)
+6. `src/features/<feature>/action.ts` (action logic)
+7. `src/features/<feature>/app.vue` (the corresponding UI entry)
 
-通常**不需要改**：
+Usually **no need to change**:
 
-- `@clipbus/plugin-sdk`——独立 SDK 包；扩展 capability 见包内 `SPECIFICATION.md`（[`@clipbus/plugin-sdk`](https://www.npmjs.com/package/@clipbus/plugin-sdk)）
-- `src/shared/`——共享工具
+- `@clipbus/plugin-sdk` — the standalone SDK package; to extend capabilities see the package's `SPECIFICATION.md` ([`@clipbus/plugin-sdk`](https://www.npmjs.com/package/@clipbus/plugin-sdk))
+- `src/shared/` — shared utilities
 - `scripts/build-runtime.mjs` / `scripts/build-ui.mjs`
 
-## 三个常用命令
+## Three common commands
 
 ```sh
-npm install       # 装依赖（含 @clipbus/plugin-sdk）
-npm run dev       # 启动 Vite 预览工作台
-npm test          # 运行 tests/ 下集成测试
-npm run build     # 生产构建到 dist/
+npm install       # install dependencies (including @clipbus/plugin-sdk)
+npm run dev       # start the Vite preview workbench
+npm test          # run the integration tests under tests/
+npm run build     # production build to dist/
 ```
 
-完整说明、字段规范、API 参考与权限模型见 [GUIDE.md](./GUIDE.md)。
+For full documentation, field specifications, API reference, and the permission model, see [GUIDE.md](./GUIDE.md).
