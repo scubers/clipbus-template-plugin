@@ -19,12 +19,14 @@
     "lint:fix": "eslint . --fix",
     "build:artifacts": "npm run clean && npm run build:runtime && npm run build:ui && npm run verify:build",
     "build": "npm run typecheck && npm run lint && npm run build:artifacts",
-    "verify": "npm run build && npm test",
+    "verify:manifest": "clipbus-validate-manifest .",
+    "verify:manifest:runtime": "clipbus-validate-manifest . --runtime",
+    "verify": "npm run verify:manifest && npm run build && npm run verify:manifest:runtime && npm test",
     "test": "node --experimental-strip-types --require ./tests/setup.cjs --test ./tests/**/*.test.cjs",
     "export": "node ./scripts/export.mjs"
   },
   "dependencies": {
-    "@clipbus/plugin-sdk": "^0.7.0",
+    "@clipbus/plugin-sdk": "^0.8.0",
     "vue": "^3.5.13"
   },
   "devDependencies": {

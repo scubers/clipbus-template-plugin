@@ -75,6 +75,27 @@ npm run build
 
 依次：clean → build:runtime → build:ui → verify:build，输出到 `dist/`。
 
+### 校验插件
+
+```sh
+npm run verify
+```
+
+依次执行：**manifest 校验 → 构建 → 测试**。
+
+manifest 校验步骤（`npm run verify:manifest`）会在构建前检查 `manifest.json` 的结构
+问题——命名空间违规、不支持的 schemaVersion、legacy 字段、非 canonical 类型等。
+这些错误与宿主安装时的校验规则一致，开发期即可拦截。
+
+也可以单独运行 manifest 校验：
+
+```sh
+npm run verify:manifest
+# 或直接调用 SDK 命令行：
+npx clipbus-validate-manifest .
+npx clipbus-validate-manifest . --runtime  # 额外检查构建产物是否存在
+```
+
 ### 测试
 
 ```sh

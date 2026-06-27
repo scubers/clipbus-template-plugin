@@ -75,6 +75,28 @@ npm run build
 
 In order: clean → build:runtime → build:ui → verify:build, output to `dist/`.
 
+### Verifying your plugin
+
+```sh
+npm run verify
+```
+
+Runs in order: **manifest validation → build → tests**.
+
+The manifest validation step (`npm run verify:manifest`) checks your `manifest.json`
+for structural issues — namespace violations, unsupported schema versions, legacy fields,
+unrecognised item types, and more — before the build runs. This catches errors early,
+the same ones the host validates at install time.
+
+You can also run manifest validation alone:
+
+```sh
+npm run verify:manifest
+# or directly via the SDK binary:
+npx clipbus-validate-manifest .
+npx clipbus-validate-manifest . --runtime  # also checks built file existence
+```
+
 ### Testing
 
 ```sh
