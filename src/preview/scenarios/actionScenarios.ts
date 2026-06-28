@@ -26,11 +26,11 @@ export const actionScenarios: PreviewScenario[] = [
       tags: BASE_ITEM_TAGS,
       sourceAppID: 'com.preview.editor',
     },
+    // GalleryDraft schema (what draft-action-ui/app.vue actually decodes):
+    // empty scratch + default variant — the baseline 4-button state.
     draft: {
-      title: 'Template draft example',
-      templateTag: 'template-plugin',
-      note: '',
-      shouldPin: false,
+      scratchText: '',
+      buttonsConfigVariant: 'default',
     },
     buttons: ACTION_BUTTONS,
     defaultButtonID: DEFAULT_BUTTON_ID,
@@ -47,11 +47,11 @@ export const actionScenarios: PreviewScenario[] = [
       tags: BASE_ITEM_TAGS,
       sourceAppID: 'com.preview.editor',
     },
+    // Prefilled scratch text + compact variant — distinct from the baseline so
+    // switching scenarios visibly changes the rendered draft (text + 2 buttons).
     draft: {
-      title: 'Release note snippet for plugin preview',
-      templateTag: 'release-note',
-      note: 'Carries the release summary into the tag workflow.',
-      shouldPin: true,
+      scratchText: 'Release note: shipped the Wire Bench preview redesign.',
+      buttonsConfigVariant: 'compact',
     },
     buttons: ACTION_BUTTONS,
     defaultButtonID: DEFAULT_BUTTON_ID,
@@ -68,11 +68,12 @@ export const actionScenarios: PreviewScenario[] = [
       tags: BASE_ITEM_TAGS,
       sourceAppID: 'com.preview.editor',
     },
+    // Long scratch text + verbose variant — stresses the fixed-height panel and
+    // the 4 long-titled buttons, clearly distinct from the other two scenarios.
     draft: {
-      title: 'This long item preview stresses the available vertical space in the draft action panel.',
-      templateTag: 'handoff-review',
-      note: 'Keep the draft readable even when the host chrome is present and the panel height stays fixed.',
-      shouldPin: false,
+      scratchText:
+        'This long scratch note stresses the fixed-height action panel — it should wrap across several lines while the card stays readable with the host chrome present.',
+      buttonsConfigVariant: 'verbose',
     },
     buttons: ACTION_BUTTONS,
     defaultButtonID: DEFAULT_BUTTON_ID,
