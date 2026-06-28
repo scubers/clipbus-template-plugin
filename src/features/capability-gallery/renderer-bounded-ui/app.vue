@@ -183,7 +183,6 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 12px;
   height: 100%;
   min-height: 0;
   overflow-y: auto;

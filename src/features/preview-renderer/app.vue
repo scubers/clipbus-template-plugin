@@ -113,16 +113,6 @@ onUnmounted(() => {
   gap: 10px;
   height: 100%;
   min-height: 0;
-  padding: 14px;
-  border-radius: 18px;
-  background:
-    linear-gradient(
-      180deg,
-      var(--clipbus-surface, rgba(248, 250, 252, 0.96)),
-      var(--clipbus-surface-elevated, rgba(241, 245, 249, 0.92))
-    );
-  border: 1px solid var(--clipbus-border, rgba(148, 163, 184, 0.22));
-  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.12);
   overflow: hidden;
 }
 

@@ -37,19 +37,16 @@ The dependency `@clipbus/plugin-sdk` is an independently published npm package (
 npm run dev
 ```
 
-Starts the Vite Preview Workbench. The workbench simulates the host pushing a bootstrap and offers two views:
+Starts the Vite preview workbench. `src/preview/preview-host/main.ts` calls `createPreviewWorkbench` from `@clipbus/plugin-sdk/preview`; the SDK harness provides the workbench chrome (two-level Renderer/Action navigation with a scenario dropdown for both modes, 4-preset theme switcher, native card shell, per-view width slider, in-card button strip), host→plugin wire injection and `--clipbus-*` CSS variable mirroring, call log panel (all plugin→host native calls), and viewport height tracking via `clipbus.window.setHeight`. Editing `src/features/*/app.vue` triggers a hot-reload.
 
-- `?view=renderer` — preview the attachment renderer card
-- `?view=action` — preview the draft action form
-
-The browser hot-reloads after you edit `src/features/*/app.vue`.
-
-You can also open a single view directly:
+You can also open a targeted view directly:
 
 ```sh
 npm run dev:renderer
 npm run dev:action
 ```
+
+For the full harness API (scenario configuration, viewport policy, call log), see `node_modules/@clipbus/plugin-sdk/docs/preview.md`.
 
 ### Debugging inside Clipbus
 

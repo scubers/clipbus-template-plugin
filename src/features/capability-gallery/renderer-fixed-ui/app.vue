@@ -66,12 +66,10 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 10px 12px;
   height: 100%;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  background: var(--clipbus-surface, #ffffff);
   color: var(--clipbus-text-primary, #0f172a);
   font-size: 11px;
 }

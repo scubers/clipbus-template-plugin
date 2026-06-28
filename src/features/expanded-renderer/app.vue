@@ -186,6 +186,7 @@ const debugBlock = computed<string>(() => {
 <style scoped>
 .expanded-shell {
   height: 100%;
+  overflow-y: auto;
   background: none;
 }
 
@@ -195,23 +196,14 @@ const debugBlock = computed<string>(() => {
   flex-direction: column;
   gap: 12px;
   min-height: 0;
-  padding: 14px 14px 14px 22px;
-  border-radius: 18px;
-  background: linear-gradient(
-    180deg,
-    var(--clipbus-surface, #ffffff),
-    var(--clipbus-surface-elevated, #f5f5f5)
-  );
-  border: 1px solid var(--clipbus-border, rgba(148, 163, 184, 0.3));
-  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.12);
-  overflow: hidden;
+  padding-left: 22px;
 }
 
 .expanded-panel__accent {
   position: absolute;
-  top: 14px;
+  top: 0;
   left: 6px;
-  bottom: 14px;
+  bottom: 0;
   width: 4px;
   border-radius: 999px;
 }

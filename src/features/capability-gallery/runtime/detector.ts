@@ -26,7 +26,7 @@ const CAPABILITY_LABELS: Record<GalleryAttachmentKind, string> = {
 
 const CAPABILITY_SUMMARY: Record<GalleryAttachmentKind, string[]> = {
   fixed: ["item.attachment", "item.search", "theme", "attachmentRenderer.setButtons"],
-  auto: ["pluginContext", "item", "no setHeight"],
+  auto: ["pluginContext", "item", "window.setHeight"],
   bounded: [
     "item.addTags", "item.setTags", "item.setPinned", "item.setAttachments",
     "item.setSearchExtension", "item.readAttachment", "item.materializeImagePath",

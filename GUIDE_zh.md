@@ -37,19 +37,16 @@ npm install
 npm run dev
 ```
 
-启动 Vite 预览工作台（Preview Workbench）。工作台模拟宿主推送 bootstrap，提供两个视图：
+启动 Vite 预览工作台。`src/preview/preview-host/main.ts` 调用 `@clipbus/plugin-sdk/preview` 的 `createPreviewWorkbench`；工作台 chrome（两级 Renderer/Action 导航，两种模式均用 scenario 下拉、4 预设主题切换器、native 卡片壳、按 view 切换的宽度滑杆、卡内按钮条）、宿主→插件 wire 注入与 `--clipbus-*` CSS 变量镜像、调用日志面板（插件→宿主的所有 native 调用）、视口高度跟踪（`clipbus.window.setHeight`）均由 SDK harness 提供。修改 `src/features/*/app.vue` 后浏览器热更新。
 
-- `?view=renderer` — 预览 attachment renderer 卡片
-- `?view=action` — 预览 draft action 表单
-
-修改 `src/features/*/app.vue` 后浏览器热更新。
-
-也可以直接打开单一视图：
+也可以直接打开特定视图：
 
 ```sh
 npm run dev:renderer
 npm run dev:action
 ```
+
+harness 完整 API（scenario 配置、视口策略、调用日志）见 `node_modules/@clipbus/plugin-sdk/docs/preview.md`。
 
 ### 在 Clipbus 中调试
 

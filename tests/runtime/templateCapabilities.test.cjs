@@ -153,7 +153,9 @@ test("template source files exist in runtime and ui trees", () => {
     "src/features/auto-action/action.ts",
     "src/features/preview-renderer/app.vue",
     "src/features/expanded-renderer/app.vue",
-    "src/preview/PreviewShellApp.vue",
+    // NOTE: src/preview/PreviewShellApp.vue was removed in plugin-preview-sink-to-sdk
+    // (phase 3). The preview host now delegates to @clipbus/plugin-sdk/preview harness
+    // via createPreviewWorkbench(); no per-project shell file is needed.
     "src/preview/preview-host/main.ts",
     "src/preview/preview-host/index.html",
     "src/preview/scenarios/attachmentScenarios.ts",
@@ -172,62 +174,35 @@ test("template source files exist in runtime and ui trees", () => {
   }
 });
 
-test("preview workbench uses resizable host viewport instead of fixed shell sizes", () => {
-  const previewShellSource = fs.readFileSync(
-    path.resolve(projectRoot, "src/preview/PreviewShellApp.vue"),
+test("preview workbench delegates to SDK harness instead of custom shell", () => {
+  // plugin-preview-sink-to-sdk (phase 3) replaced the 600-line PreviewShellApp.vue
+  // with a thin main.ts glue that calls createPreviewWorkbench() from
+  // @clipbus/plugin-sdk/preview. The SDK harness owns resizable viewport,
+  // host chrome, button strip, theme switching, and scenario activation —
+  // so no custom shell file is needed or permitted here.
+
+  // 1. PreviewShellApp.vue must not exist.
+  assert.ok(
+    !fs.existsSync(path.resolve(projectRoot, "src/preview/PreviewShellApp.vue")),
+    "src/preview/PreviewShellApp.vue must not exist — it was replaced by SDK harness in plugin-preview-sink-to-sdk"
+  );
+
+  // 2. main.ts must delegate to createPreviewWorkbench (SDK resizable viewport provider).
+  const mainSource = fs.readFileSync(
+    path.resolve(projectRoot, "src/preview/preview-host/main.ts"),
     "utf8"
   );
-
-  assert.equal(
-    previewShellSource.includes('height: "320px"'),
-    false,
-    "expected renderer preview height to stop using a fixed 320px shell"
-  );
-  assert.equal(
-    previewShellSource.includes('width: "350px"'),
-    false,
-    "expected action preview width to stop using a fixed 350px shell"
-  );
-  assert.equal(
-    previewShellSource.includes('height: "250px"'),
-    false,
-    "expected action preview height to stop using a fixed 250px shell"
-  );
-  assert.equal(
-    previewShellSource.includes("Responsive height 320"),
-    false,
-    "expected static renderer size label to be removed"
-  );
-  assert.equal(
-    previewShellSource.includes("Fixed size 350 × 250"),
-    false,
-    "expected static action size label to be removed"
-  );
-  assert.match(
-    previewShellSource,
-    /host-frame__viewport|viewportStyle|startResize/,
-    "expected preview shell to implement a resizable viewport"
-  );
-  assert.match(
-    previewShellSource,
-    /host-frame__chrome|Host resize/,
-    "expected resize affordance to be presented as host chrome"
-  );
-  const viewportStart = previewShellSource.indexOf('<div class="host-frame__viewport"');
-  const viewportEnd = previewShellSource.indexOf("</div>", viewportStart);
-  const chromeStart = previewShellSource.indexOf('<div class="host-frame__chrome">');
-  const handleStart = previewShellSource.indexOf('class="host-frame__resize-handle"');
-
-  assert.notEqual(viewportStart, -1, "expected preview shell viewport markup");
-  assert.notEqual(chromeStart, -1, "expected host chrome wrapper markup");
-  assert.notEqual(handleStart, -1, "expected resize handle markup");
   assert.ok(
-    chromeStart > viewportEnd,
-    "expected host chrome to be rendered after the plugin content viewport"
+    mainSource.includes("createPreviewWorkbench"),
+    "preview-host/main.ts must call createPreviewWorkbench from @clipbus/plugin-sdk/preview"
   );
   assert.ok(
-    handleStart > chromeStart,
-    "expected resize handle to live inside host chrome instead of plugin content"
+    mainSource.includes("@clipbus/plugin-sdk/preview"),
+    "preview-host/main.ts must import from @clipbus/plugin-sdk/preview"
+  );
+  assert.ok(
+    !mainSource.includes("PreviewShellApp"),
+    "preview-host/main.ts must not reference the deleted PreviewShellApp"
   );
 });
 

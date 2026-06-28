@@ -37,8 +37,7 @@ template-plugin/
 │   ├── shared/                         ← thin shared layer across features
 │   │   ├── display.ts
 │   │   └── debug.ts
-│   ├── preview/                        ← local preview workbench (dev-only)
-│   │   ├── PreviewShellApp.vue
+│   ├── preview/                        ← local preview workbench (dev-only; uses @clipbus/plugin-sdk/preview)
 │   │   ├── scenarios/
 │   │   └── preview-host/
 │   └── plugin.ts                       ← definePlugin entry
@@ -59,6 +58,7 @@ template-plugin/
 
 - Files: `src/features/preview-renderer/renderer.ts` + `src/features/preview-renderer/app.vue`
 - Demonstrates: `resolveAttachment()`, `clipbus.attachmentRenderer.onHostInvoke`, fixed `height: 320`, theme adaptation across 12 theme tokens
+- **Convention**: the component does not self-draw outer background / border / border-radius / box-shadow — the host (and preview harness) provide the card shell uniformly
 
 ### attachment renderer (expanded, adaptive height + theme events)
 
@@ -81,7 +81,7 @@ The template also declares two sub-variants, `template-auto-action-text` / `temp
 
 - Directory: `src/features/capability-gallery/` (see [`src/features/capability-gallery/README.md`](./src/features/capability-gallery/README.md) for details)
 - Role: a "full SDK capability demo" feature that complements the four minimal samples above — covering 25 of the 26 capabilities (only `asset.pathReferenceImageUrl` is not demonstrated separately), 7 host events, 4 permissions, 3 height shapes, 3 actionResult shapes, and 3 item kinds
-- Contains: 1 detector (×3 attachments) + 3 auto-run actions + 1 draft action + 3 attachment renderers + 4 WebViews (bounded main stage + fixed + auto + draft-action)
+- Contains: 1 detector (×3 attachments) + 3 auto-run actions + 1 draft action + 3 attachment renderers + 4 WebViews (bounded main stage + fixed + auto + draft-action); all 3 attachment renderers are wired in the preview scenarios (`gallery-fixed-240`, `gallery-auto`, `gallery-bounded-120-480`)
 - Image display: the bounded renderer and the draft action use `clipbus.asset.currentItemImageUrl()` to obtain a `clipbus-asset://` URL and show the current item's image in an `<img>`, and use `host.asset.registerImage()` to display a solid-color image produced by Node (see [GUIDE.md](./GUIDE.md) §6.6)
 - Use case: a clickable reference for third-party plugin authors wondering "what exactly can this SDK do?"
 
@@ -107,7 +107,7 @@ Usually **no need to change**:
 
 ```sh
 npm install       # install dependencies (including @clipbus/plugin-sdk)
-npm run dev       # start the Vite preview workbench
+npm run dev       # start the Vite preview workbench (harness from @clipbus/plugin-sdk/preview)
 npm test          # run the integration tests under tests/
 npm run build     # production build to dist/
 ```

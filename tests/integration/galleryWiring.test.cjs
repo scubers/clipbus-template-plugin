@@ -298,4 +298,29 @@ describe('plugin-show-case wiring', () => {
       ]);
     }
   });
+
+  test('gallery-auto renderer Vue drives its height via autoFit (auto requires plugin-driven setHeight)', () => {
+    // Contract (decided 2026-06-28): manifest height "auto" carries no numbers;
+    // native resolves it to bounded(defaultBoundedMin 80, ceiling 800) and only
+    // ever honours window.setHeight — there is NO host-side "size to content".
+    // So an auto renderer MUST drive its own height via the SDK autoFit helper;
+    // one that relies on "host sizes to content" stays pinned at the 80px policy
+    // min in native and gets clipped (the gallery-auto-native defect this guards).
+    // Mirror of the expanded-renderer autoFit-bounds test in templateCapabilities.
+    const manifest = loadManifest();
+    const auto = manifest.attachmentRenderers.find((entry) => entry.id === 'gallery-renderer-auto');
+    assert.ok(auto, 'expected gallery-renderer-auto in manifest');
+    assert.equal(auto.height, 'auto', 'gallery-renderer-auto manifest height must stay "auto"');
+
+    const vueSource = fs.readFileSync(
+      path.resolve(projectRoot, 'src/features/capability-gallery/renderer-auto-ui/app.vue'),
+      'utf8',
+    );
+    const minMatch = vueSource.match(/autoFit\(\s*\{[^}]*min:\s*(\d+)/);
+    const maxMatch = vueSource.match(/autoFit\(\s*\{[^}]*max:\s*(\d+)/);
+    assert.ok(minMatch && maxMatch, 'gallery-auto app.vue must call autoFit({ min, max }) to drive its height');
+    // Bounds mirror native auto → bounded(defaultBoundedMin 80, ceiling 800).
+    assert.equal(Number(minMatch[1]), 80, 'autoFit min must be native defaultBoundedMin (80)');
+    assert.equal(Number(maxMatch[1]), 800, 'autoFit max must be native ceiling (800)');
+  });
 });

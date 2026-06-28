@@ -393,12 +393,10 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 14px 16px;
   height: 100%;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  background: var(--clipbus-surface, #ffffff);
   color: var(--clipbus-text-primary, #0f172a);
   font-size: 12px;
 }

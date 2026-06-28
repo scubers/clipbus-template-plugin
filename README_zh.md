@@ -37,8 +37,7 @@ template-plugin/
 │   ├── shared/                         ← 跨 feature 的薄共享层
 │   │   ├── display.ts
 │   │   └── debug.ts
-│   ├── preview/                        ← 本地预览工作台（dev-only）
-│   │   ├── PreviewShellApp.vue
+│   ├── preview/                        ← 本地预览工作台（dev-only；使用 @clipbus/plugin-sdk/preview）
 │   │   ├── scenarios/
 │   │   └── preview-host/
 │   └── plugin.ts                       ← definePlugin 入口
@@ -59,6 +58,7 @@ template-plugin/
 
 - 文件：`src/features/preview-renderer/renderer.ts` + `src/features/preview-renderer/app.vue`
 - 演示：`resolveAttachment()`、`clipbus.attachmentRenderer.onHostInvoke`、固定 `height: 320`、12 个 theme token 主题适配
+- **约定**：组件不自绘最外层 background / border / border-radius / box-shadow——宿主（与 harness）统一提供卡片框
 
 ### attachment renderer（expanded，自适应高度 + 主题事件）
 
@@ -81,7 +81,7 @@ template-plugin/
 
 - 目录：`src/features/capability-gallery/`（详见 [`src/features/capability-gallery/README.md`](./src/features/capability-gallery/README.md)）
 - 角色：与上面 4 个最小样板互补的 "SDK 全能力演示" feature——覆盖 26 个 capability 中的 25 个（仅 `asset.pathReferenceImageUrl` 未单独演示）、7 个 host event、4 个 permission、3 种 height 形态、3 种 actionResult 形态、3 种 item kind
-- 包含：1 detector（×3 attachment）+ 3 个 auto-run action + 1 draft action + 3 个 attachment renderer + 4 个 WebView（bounded 主舞台 + fixed + auto + draft-action）
+- 包含：1 detector（×3 attachment）+ 3 个 auto-run action + 1 draft action + 3 个 attachment renderer + 4 个 WebView（bounded 主舞台 + fixed + auto + draft-action）；3 个 attachment renderer 均已接入预览 scenario（`gallery-fixed-240`、`gallery-auto`、`gallery-bounded-120-480`）
 - 图片展示：bounded renderer 与 draft action 经 `clipbus.asset.currentItemImageUrl()` 取 `clipbus-asset://` URL 在 `<img>` 显示当前 item 图，并经 `host.asset.registerImage()` 显示 Node 产出的纯色图（见 [GUIDE_zh.md](./GUIDE_zh.md) §6.6）
 - 用途：三方插件作者想"这个 SDK 到底能做什么"的可点击参考
 
@@ -107,7 +107,7 @@ template-plugin/
 
 ```sh
 npm install       # 装依赖（含 @clipbus/plugin-sdk）
-npm run dev       # 启动 Vite 预览工作台
+npm run dev       # 启动 Vite 预览工作台（harness 来自 @clipbus/plugin-sdk/preview）
 npm test          # 运行 tests/ 下集成测试
 npm run build     # 生产构建到 dist/
 ```

@@ -1,36 +1,40 @@
 <template>
   <main class="auto-shell">
-    <header class="auto-shell__header">
-      <p class="auto-shell__eyebrow">Gallery · height="auto"</p>
-      <h1 class="auto-shell__title">Content drives container</h1>
-      <p class="auto-shell__subtitle">
-        No <code>clipbus.window.setHeight</code> calls — host sizes to content.
-      </p>
-    </header>
+    <div ref="container" class="auto-shell__content">
+      <header class="auto-shell__header">
+        <p class="auto-shell__eyebrow">Gallery · height="auto"</p>
+        <h1 class="auto-shell__title">Content drives container</h1>
+        <p class="auto-shell__subtitle">
+          Sizes to content via <code>autoFit</code> (<code>@clipbus/plugin-sdk/dom</code>),
+          which posts <code>clipbus.window.setHeight</code> as content grows.
+        </p>
+      </header>
 
-    <section class="auto-shell__panel">
-      <p class="auto-shell__section-label">pluginContext</p>
-      <pre class="auto-shell__snapshot">{{ formatJSON(pluginContextSnapshot) }}</pre>
-    </section>
+      <section class="auto-shell__panel">
+        <p class="auto-shell__section-label">pluginContext</p>
+        <pre class="auto-shell__snapshot">{{ formatJSON(pluginContextSnapshot) }}</pre>
+      </section>
 
-    <section class="auto-shell__panel">
-      <p class="auto-shell__section-label">item</p>
-      <pre class="auto-shell__snapshot">{{ formatJSON(itemSnapshot) }}</pre>
-    </section>
+      <section class="auto-shell__panel">
+        <p class="auto-shell__section-label">item</p>
+        <pre class="auto-shell__snapshot">{{ formatJSON(itemSnapshot) }}</pre>
+      </section>
 
-    <section class="auto-shell__growable">
-      <p class="auto-shell__section-label">growable content</p>
-      <ol class="auto-shell__list">
-        <li v-for="line in growLines" :key="line">{{ line }}</li>
-      </ol>
-      <button class="auto-shell__button" type="button" @click="appendLine">Append line</button>
-    </section>
+      <section class="auto-shell__growable">
+        <p class="auto-shell__section-label">growable content</p>
+        <ol class="auto-shell__list">
+          <li v-for="line in growLines" :key="line">{{ line }}</li>
+        </ol>
+        <button class="auto-shell__button" type="button" @click="appendLine">Append line</button>
+      </section>
+    </div>
   </main>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { clipbus } from "@clipbus/plugin-sdk/ui";
+import { autoFit } from "@clipbus/plugin-sdk/dom";
 import { useTopicRef } from "../../../shared/composables/useTopicRef";
 
 const pluginContext = useTopicRef(clipbus.pluginContext);
@@ -38,6 +42,17 @@ const itemTopic = useTopicRef(clipbus.item);
 
 const pluginContextSnapshot = computed(() => pluginContext.value ?? null);
 const itemSnapshot = computed(() => itemTopic.value ?? null);
+
+// height="auto" is plugin-driven: the host has NO content-sizing of its own.
+// Native resolves auto → bounded(80, 800) and only ever honours window.setHeight,
+// so this renderer MUST drive its own height — observe the content-sized inner
+// layer (.auto-shell__content; no height:100%, so scrollHeight tracks both growth
+// AND shrink) and let the SDK autoFit helper post window.setHeight. The outer
+// .auto-shell is a scroll frame so content past the 800 ceiling scrolls instead
+// of clipping. Bounds mirror native auto → bounded(
+// defaultBoundedMin 80, ceiling 800); kept in sync by a unit test.
+const container = ref<HTMLElement | null>(null);
+let disconnectAutoFit: (() => void) | null = null;
 
 const growLines = ref<string[]>([
   "Initial line — observe the host shell grow as new lines are appended.",
@@ -50,15 +65,40 @@ function appendLine(): void {
 function formatJSON(value: unknown): string {
   return JSON.stringify(value ?? null, null, 2);
 }
+
+onMounted(() => {
+  const target = container.value;
+  if (target) {
+    disconnectAutoFit = autoFit({ min: 80, max: 800, target });
+  }
+});
+
+onUnmounted(() => {
+  if (typeof disconnectAutoFit === "function") {
+    disconnectAutoFit();
+    disconnectAutoFit = null;
+  }
+});
 </script>
 
 <style scoped>
 .auto-shell {
+  /* Scroll frame: fills the host body (whose height autoFit drives via
+     setHeight). At the 800 ceiling the host clips, so the shell scrolls
+     internally — same contract as the fixed/bounded renderers + native's
+     clip-at-cap rule (plugins self-scroll past the cap). */
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Content layer — autoFit observes THIS (content-sized, no height:100%), so
+   scrollHeight tracks both growth and shrink. */
+.auto-shell__content {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 12px 14px;
-  background: var(--clipbus-surface, #ffffff);
   color: var(--clipbus-text-primary, #0f172a);
   font-size: 12px;
 }
