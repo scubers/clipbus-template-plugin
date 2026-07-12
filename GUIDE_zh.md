@@ -81,7 +81,8 @@ npm run verify
 依次执行：**manifest 校验 → 构建 → 测试**。
 
 manifest 校验步骤（`npm run verify:manifest`）会在构建前检查 `manifest.json` 的结构
-问题——命名空间违规、不支持的 schemaVersion、legacy 字段、非 canonical 类型等。
+问题——命名空间违规、不支持的 schemaVersion、legacy 字段、非 canonical 类型、非法的
+`plugin.id` 格式（仅允许小写字母/数字与 `-` `.` `_`，不含 `..`、不以 `.` 开头，长度 ≤128）等。
 这些错误与宿主安装时的校验规则一致，开发期即可拦截。
 
 也可以单独运行 manifest 校验：

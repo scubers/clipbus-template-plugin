@@ -82,8 +82,9 @@ Runs in order: **manifest validation → build → tests**.
 
 The manifest validation step (`npm run verify:manifest`) checks your `manifest.json`
 for structural issues — namespace violations, unsupported schema versions, legacy fields,
-unrecognised item types, and more — before the build runs. This catches errors early,
-the same ones the host validates at install time.
+unrecognised item types, invalid `plugin.id` formats (lowercase letters/digits and `-` `.` `_`
+only, no `..`, no leading `.`, max 128 chars), and more — before the build runs. This catches
+errors early, the same ones the host validates at install time.
 
 You can also run manifest validation alone:
 
