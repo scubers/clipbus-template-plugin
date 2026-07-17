@@ -81,7 +81,10 @@ than a catalog button:
 
 | capability | side | where |
 |---|---|---|
-| `asset.currentItemImageUrl` | ui | bounded-ui · ImagePanel; draft-action-ui · image asset section |
+| `asset.currentItemImageUrl` | ui | bounded-ui · ImagePanel |
+| `asset.currentActionInputImageUrl` | ui/action | draft-action-ui · current Action image |
+| `action.materializeInputImagePath` | runtime/action | gallery-auto-image; draft copy-image RPC |
+| `action.allocateOutputFilePath` | runtime/action | gallery-auto-path-reference |
 | `asset.registerImage` | runtime | bounded-ui · ImagePanel & draft-action-ui — "Generate solid image (Node)" button → `createSolidImage` RPC |
 
 The button asks the Node runtime to generate a random solid-color PNG

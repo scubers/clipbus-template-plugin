@@ -55,7 +55,7 @@ test("manifest registers template detector, renderer, and actions", () => {
   const autoAction = manifest.actions.find((entry) => entry.id === "template-auto-action");
   assert.ok(autoAction, "expected template-auto-action to be declared in manifest");
   assert.equal(autoAction.lifecycle, "auto-run");
-  assert.deepEqual(autoAction.supportedItemTypes, ["text", "image", "path_reference"]);
+  assert.deepEqual(autoAction.supportedInputKinds, ["text", "image", "path_reference"]);
 
   // template-draft-action was removed in plugin-api-shrink (features/draft-action/ deleted).
   const removedDraftAction = manifest.actions.find((entry) => entry.id === "template-draft-action");
@@ -465,9 +465,9 @@ test("template auto action runAutoAction returns copyable metadata for non-text 
   const action = createTemplateAutoAction();
   const result = await action.runAutoAction(
     {
-      item: {
+      sourceItem: {
         id: "image-item",
-        type: "image",
+        type: "text",
         tags: ["asset"],
         sourceAppID: "preview.app"
       },
@@ -475,9 +475,7 @@ test("template auto action runAutoAction returns copyable metadata for non-text 
         kind: "image",
         bytes: 0, width: 0, height: 0, format: "png"
       },
-      draft: {},
-      buttonID: null,
-      triggerSource: "autoRun"
+      attachments: []
     },
     {
       request: { id: "request-1" },
@@ -489,8 +487,8 @@ test("template auto action runAutoAction returns copyable metadata for non-text 
 
   assert.equal(result.result.resultKind, "text");
   assert.match(result.result.text, /Template Auto Action/);
-  assert.match(result.result.text, /Image: Image item/);
-  assert.match(result.result.text, /"triggerSource": "autoRun"/);
+  assert.match(result.result.text, /Image: PNG image/);
+  assert.match(result.result.text, /"sourceItem"/);
 });
 
 test("expanded renderer Vue uses attachAutoFit bounds matching manifest height", () => {

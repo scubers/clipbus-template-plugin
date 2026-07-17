@@ -56,9 +56,9 @@ test("(a) detector accepts image input without dataBase64 and emits clean artifa
   }
 });
 
-// ─── (b) image-only action calls materializeImagePath via mock host ───────────
+// ─── (b) image-only action materializes the current Action input ─────────────
 
-test("(b) image-only action calls materializeImagePath and path is valid", async () => {
+test("(b) image-only action calls materializeInputImagePath and path is valid", async () => {
   const { createTemplateAutoActionImageOnly } = require(path.resolve(
     projectRoot,
     "src/features/auto-action/action.ts"
@@ -71,20 +71,15 @@ test("(b) image-only action calls materializeImagePath and path is valid", async
   try {
     const action = createTemplateAutoActionImageOnly();
     const input = {
-      item: { id: "img-1", type: "image", tags: [], sourceAppID: "test" },
+      sourceItem: { id: "source-text-1", type: "text", tags: [], sourceAppID: "test" },
       content: { kind: "image", bytes: imageBytes, width: 100, height: 100, format: "png" },
-      attachments: [],
-      actionID: "template-auto-action-image",
-      trigger: { kind: "auto" }
+      attachments: []
     };
 
     let materializeCallCount = 0;
     const mockHost = {
-      item: {
-        // P5 (unify-plugin-data-flow): host call takes an object payload and
-        // returns { path } per the catalog contract.
-        materializeImagePath: async (payload) => {
-          assert.deepEqual(payload, {}, "expected object payload (P5 contract)");
+      action: {
+        materializeInputImagePath: async () => {
           materializeCallCount++;
           return { path: tmpFile };
         }
@@ -94,7 +89,7 @@ test("(b) image-only action calls materializeImagePath and path is valid", async
     const result = await action.runAutoAction(input, { host: mockHost });
 
     assert.equal(result.result?.resultKind, "text", "expected text result kind");
-    assert.equal(materializeCallCount, 1, "expected materializeImagePath to be called exactly once");
+    assert.equal(materializeCallCount, 1, "expected materializeInputImagePath to be called exactly once");
     assert.ok(
       result.result?.text?.includes(tmpFile),
       "action output must include the materialized image path"
@@ -216,13 +211,18 @@ test("(f) empty or missing content field falls back to generic text display", as
 
 // ─── (c) grep guard: no source reads input.item.text ─────────────────────────
 
-test("(c) no detector or action source reads input.item.text", () => {
+test("(c) no detector or action source reads legacy action input.item", () => {
   const srcDirs = [
     path.resolve(projectRoot, "src/features"),
     path.resolve(projectRoot, "src/shared")
   ];
 
-  const banned = ["input.item.text", "input?.item?.text"];
+  const banned = [
+    "input.item.text",
+    "input?.item?.text",
+    "input.item, input.content",
+    "input?.item, input?.content",
+  ];
 
   function walkDir(dir) {
     const result = [];

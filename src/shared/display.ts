@@ -206,33 +206,27 @@ interface ItemShape {
 }
 
 interface ContentShape {
-  // Flat PluginContentEnvelope (text variant) — text is a sibling of kind.
+  kind?: string;
   text?: string;
+  width?: number;
+  height?: number;
+  format?: string;
+  bytes?: number;
+  entries?: unknown[];
 }
 
 export function buildItemDisplay(item: unknown, content: unknown): DisplayInfo {
-  const type = (item as ItemShape)?.type;
-  const canonicalType: CanonicalContentKind =
-    type === "path_reference" ? "path_reference" :
-    type === "image" ? "image" : "text";
+  const contentShape = (content ?? {}) as ContentShape;
+  const canonicalType = mapContentKind(
+    contentShape.kind ?? (item as ItemShape)?.type
+  );
 
   const sourceAppID = String((item as ItemShape)?.sourceAppID ?? "");
   const tags = safeArray((item as ItemShape)?.tags);
-  const baseDisplay: DisplayInfo = canonicalType === "text"
-    ? buildTextDisplay((content as ContentShape)?.text)
-    : canonicalType === "image"
-      ? {
-          typeLabel: "Image",
-          headline: "Image item",
-          subheadline: "Action runtime receives item snapshot only.",
-          facts: []
-        }
-      : {
-          typeLabel: "Path",
-          headline: "Path reference item",
-          subheadline: "Action runtime does not expose path entries directly.",
-          facts: []
-        };
+  const baseDisplay = buildContentDisplay(
+    canonicalType,
+    contentShape as ContentPayload
+  );
 
   return {
     typeLabel: baseDisplay.typeLabel,
