@@ -1,7 +1,8 @@
-// Three auto-run actions covering the three actionResult shapes:
-//   - text  → actionResult.text(...)
-//   - image → actionResult.image(...)
-//   - none  → actionResult.none(...)
+// Four auto-run actions covering every actionResult shape:
+//   - text           → actionResult.text(...)
+//   - image          → actionResult.image(...)
+//   - none           → actionResult.none(...)
+//   - path_reference → actionResult.path_reference(...)
 //
 // Each handler also exercises a handful of ctx.host.* methods so the runtime
 // log demonstrates that handlers are not limited to the result builder.
@@ -14,7 +15,7 @@ import type {
   PluginActionResolveResult,
 } from "@clipbus/plugin-sdk/runtime";
 
-// All three gallery auto-run actions follow the same lifecycle: they execute
+// All gallery auto-run actions follow the same lifecycle: they execute
 // directly from the host without a draft UI. After plugin-api-shrink (R13
 // strict handler), PluginAutoRunActionHandler requires both `resolveSession`
 // and `runAutoAction`; auto-run actions provide a minimal session that the
@@ -28,11 +29,10 @@ import path from "node:path";
 
 type CtxAny = {
   host?: {
-    item?: {
-      materializeImagePath?: (p: Record<string, never>) => Promise<{ path: string }>;
-    };
     action?: {
       allocateImageTempPath?: (p: { formatHint: string }) => Promise<{ path: string }>;
+      materializeInputImagePath?: () => Promise<{ path: string }>;
+      allocateOutputFilePath?: (p: { suggestedName?: string }) => Promise<{ path: string }>;
     };
     clipboard?: {
       copyText?: (p: { text: string }) => Promise<unknown>;
@@ -44,7 +44,7 @@ type CtxAny = {
 } | null | undefined;
 
 function summarizeInput(input: PluginAutoRunActionInput): string {
-  const item = (input?.item ?? null) as { id?: unknown; type?: unknown } | null;
+  const item = (input?.sourceItem ?? null) as { id?: unknown; type?: unknown } | null;
   const content = (input?.content ?? null) as { kind?: unknown } | null;
   return JSON.stringify(
     {
@@ -84,10 +84,10 @@ export function createAutoActionImage(): PluginAutoRunActionHandler {
       const ctxAny = ctx as CtxAny;
       // Manifest gates this action to image items, so materialization is safe
       // to require here.
-      const materialized = await ctxAny?.host?.item?.materializeImagePath?.({} as Record<string, never>);
+      const materialized = await ctxAny?.host?.action?.materializeInputImagePath?.();
       const sourcePath = materialized?.path;
       if (typeof sourcePath !== "string" || sourcePath.length === 0) {
-        throw new Error("materializeImagePath returned no path");
+        throw new Error("materializeInputImagePath returned no path");
       }
       const ext = path.extname(sourcePath).toLowerCase().replace(/^\./, "");
       const imageFormatHint = ext || "png";
@@ -123,6 +123,48 @@ export function createAutoActionNone(): PluginAutoRunActionHandler {
         // best-effort demo
       }
       return actionResult.none({ userMessage: "Gallery none result (side-effects only)" });
+    },
+  };
+}
+
+export function createAutoActionPathReference(): PluginAutoRunActionHandler {
+  return {
+    resolveSession: autoRunResolveSessionStub,
+    async runAutoAction(
+      input: PluginAutoRunActionInput,
+      ctx: unknown
+    ): Promise<PluginActionOperationResult> {
+      if (input.content.kind === "path_reference" && input.content.entries.length > 0) {
+        return actionResult.path_reference(
+          [{ source: "input", inputIndex: 0 }],
+          { userMessage: "Gallery reused the first current-input path" },
+        );
+      }
+
+      const ctxAny = ctx as CtxAny;
+      const allocated = await ctxAny?.host?.action?.allocateOutputFilePath?.({
+        suggestedName: "gallery-action-output.txt",
+      });
+      if (!allocated?.path) {
+        throw new Error("allocateOutputFilePath returned no path");
+      }
+      await fs.writeFile(
+        allocated.path,
+        [
+          "Clipbus template plugin Action output",
+          `sourceItem=${input.sourceItem.id}`,
+          `contentKind=${input.content.kind}`,
+        ].join("\n"),
+        "utf8",
+      );
+      return actionResult.path_reference(
+        [{
+          source: "allocated_file",
+          path: allocated.path,
+          displayName: "gallery-action-output.txt",
+        }],
+        { userMessage: "Gallery file result" },
+      );
     },
   };
 }

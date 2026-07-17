@@ -34,6 +34,7 @@ function loadGalleryPluginRegistry() {
     createAutoActionText,
     createAutoActionImage,
     createAutoActionNone,
+    createAutoActionPathReference,
   } = require(path.resolve(projectRoot, 'src/features/capability-gallery/runtime/auto-actions.ts'));
   const { createGalleryDraftAction } = require(path.resolve(projectRoot, 'src/features/capability-gallery/runtime/draft-action.ts'));
 
@@ -48,6 +49,7 @@ function loadGalleryPluginRegistry() {
       'gallery-auto-text': createAutoActionText(),
       'gallery-auto-image': createAutoActionImage(),
       'gallery-auto-none': createAutoActionNone(),
+      'gallery-auto-path-reference': createAutoActionPathReference(),
       'gallery-draft': createGalleryDraftAction(),
     },
   };
@@ -184,7 +186,7 @@ describe('plugin-show-case wiring', () => {
     const manifestIDs = manifest.actions
       .filter((entry) => String(entry.id).startsWith(GALLERY_PREFIX))
       .map((entry) => entry.id);
-    assert.equal(manifestIDs.length, 4, 'expected 4 gallery- actions in manifest (3 auto-run + 1 draft)');
+    assert.equal(manifestIDs.length, 5, 'expected 5 gallery- actions in manifest (4 auto-run + 1 draft)');
     for (const id of manifestIDs) {
       assert.ok(registry.actions[id], `manifest action ${id} must have a runtime handler`);
     }

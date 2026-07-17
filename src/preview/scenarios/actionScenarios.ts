@@ -32,6 +32,10 @@ export const actionScenarios: PreviewScenario[] = [
       scratchText: '',
       buttonsConfigVariant: 'default',
     },
+    actionInput: {
+      kind: 'text',
+      text: 'Draft UI receives this current value, not the original item content.',
+    },
     buttons: ACTION_BUTTONS,
     defaultButtonID: DEFAULT_BUTTON_ID,
   },
@@ -52,6 +56,13 @@ export const actionScenarios: PreviewScenario[] = [
     draft: {
       scratchText: 'Release note: shipped the Wire Bench preview redesign.',
       buttonsConfigVariant: 'compact',
+    },
+    actionInput: {
+      kind: 'path_reference',
+      entries: [
+        { kind: 'file', displayName: 'release-notes.md' },
+        { kind: 'folder', displayName: 'assets' },
+      ],
     },
     buttons: ACTION_BUTTONS,
     defaultButtonID: DEFAULT_BUTTON_ID,
@@ -74,6 +85,13 @@ export const actionScenarios: PreviewScenario[] = [
       scratchText:
         'This long scratch note stresses the fixed-height action panel — it should wrap across several lines while the card stays readable with the host chrome present.',
       buttonsConfigVariant: 'verbose',
+    },
+    actionInput: {
+      kind: 'image',
+      width: 1200,
+      height: 800,
+      format: 'png',
+      bytes: 245760,
     },
     buttons: ACTION_BUTTONS,
     defaultButtonID: DEFAULT_BUTTON_ID,

@@ -62,6 +62,7 @@ if (
   !runtimeEntry.includes("gallery-auto-text") ||
   !runtimeEntry.includes("gallery-auto-image") ||
   !runtimeEntry.includes("gallery-auto-none") ||
+  !runtimeEntry.includes("gallery-auto-path-reference") ||
   !runtimeEntry.includes("gallery-draft")
 ) {
   throw new Error("dist/plugin.cjs does not contain the required template + gallery runtime bundles.");
