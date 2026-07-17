@@ -29,15 +29,6 @@
     </section>
 
     <section class="draft-shell__panel">
-      <p class="draft-shell__section-label">current Action input</p>
-      <p class="draft-shell__hint">
-        Sanitized value from <code>clipbus.action.input</code>; path entries
-        expose only kind and display name.
-      </p>
-      <pre class="draft-shell__snapshot">{{ formatJSON(actionInputTopic) }}</pre>
-    </section>
-
-    <section class="draft-shell__panel">
       <p class="draft-shell__section-label">UI-side capability catalog</p>
       <p class="draft-shell__hint">
         These are the action-scope verbs invokable from the draft UI. Clicking
@@ -80,7 +71,7 @@
 
     <section class="draft-shell__panel">
       <p class="draft-shell__section-label">image asset</p>
-      <p class="draft-shell__hint">Current Action input image (<code>clipbus.asset.currentActionInputImageUrl</code>):</p>
+      <p class="draft-shell__hint">Current clipboard image (<code>clipbus.asset.currentItemImageUrl</code>):</p>
       <img
         v-if="currentImageUrl"
         :src="currentImageUrl"
@@ -141,7 +132,6 @@ interface LogEntry {
 const infoPanelSupported = clipbus.capabilities.has('infoPanel.open');
 
 const draftTopic = useTopicRef(clipbus.action.draft);
-const actionInputTopic = useTopicRef(clipbus.action.input);
 
 const draft = reactive<GalleryDraft>({ scratchText: "", buttonsConfigVariant: "default" });
 
@@ -306,16 +296,16 @@ async function handleClick(button: GalleryActionButton): Promise<void> {
 const currentImageUrl = ref<string | null>(null);
 const generatedImageUrl = ref<string | null>(null);
 
-async function loadCurrentActionInputImage(): Promise<void> {
+async function loadCurrentItemImage(): Promise<void> {
   const ts = new Date().toISOString();
   try {
-    const response = await clipbus.asset.currentActionInputImageUrl();
+    const response = await clipbus.asset.currentItemImageUrl();
     currentImageUrl.value = response.url ?? null;
-    pushLog({ ts, api: "clipbus.asset.currentActionInputImageUrl()", detail: response.url ?? "(no url)" });
+    pushLog({ ts, api: "clipbus.asset.currentItemImageUrl()", detail: response.url ?? "(no url)" });
   } catch (err) {
     pushLog({
       ts,
-      api: "clipbus.asset.currentActionInputImageUrl()",
+      api: "clipbus.asset.currentItemImageUrl()",
       detail: err instanceof Error ? err.message : String(err),
       error: true,
     });
@@ -362,7 +352,7 @@ async function handleHostInvoke(detail: { buttonID?: string } | null | undefined
 onMounted(async () => {
   await clipbus.action.setButtons({ buttons: BUTTON_VARIANTS[draft.buttonsConfigVariant] });
   unsubHostInvoke = clipbus.action.onHostInvoke.on(handleHostInvoke);
-  await loadCurrentActionInputImage();
+  await loadCurrentItemImage();
 
   // infoPanel demo 按钮已按 `infoPanelSupported` 门控；事件监听这里无条件注册即可——
   // `clipbus.infoPanel` 命名空间恒在，宿主不支持时这些流永不触发（惰性、无副作用）。

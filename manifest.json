@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 2,
   "plugin": {
     "id": "plugin.template.full",
     "title": "Template Plugin",
@@ -81,56 +81,49 @@
     {
       "id": "template-auto-action",
       "title": "Template Auto Action",
-      "supportedInputKinds": ["text", "image", "path_reference"],
+      "supportedItemTypes": ["text", "image", "path_reference"],
       "lifecycle": "auto-run",
       "keywords": ["template", "metadata", "debug"]
     },
     {
       "id": "template-auto-action-text",
       "title": "Template Auto Action (Text)",
-      "supportedInputKinds": ["text"],
+      "supportedItemTypes": ["text"],
       "lifecycle": "auto-run",
       "keywords": ["template", "metadata", "debug", "text", "quota"]
     },
     {
       "id": "template-auto-action-image",
       "title": "Template Auto Action (Image)",
-      "supportedInputKinds": ["image"],
+      "supportedItemTypes": ["image"],
       "lifecycle": "auto-run",
       "keywords": ["template", "metadata", "debug", "image", "quota"]
     },
     {
       "id": "gallery-auto-text",
       "title": "Gallery Auto (text)",
-      "supportedInputKinds": ["text", "image", "path_reference"],
+      "supportedItemTypes": ["text", "image", "path_reference"],
       "lifecycle": "auto-run",
       "keywords": ["gallery", "demo", "showcase", "text"]
     },
     {
       "id": "gallery-auto-image",
       "title": "Gallery Auto (image)",
-      "supportedInputKinds": ["image"],
+      "supportedItemTypes": ["image"],
       "lifecycle": "auto-run",
       "keywords": ["gallery", "demo", "showcase", "image"]
     },
     {
       "id": "gallery-auto-none",
       "title": "Gallery Auto (none)",
-      "supportedInputKinds": ["text", "image", "path_reference"],
+      "supportedItemTypes": ["text", "image", "path_reference"],
       "lifecycle": "auto-run",
       "keywords": ["gallery", "demo", "showcase", "none"]
     },
     {
-      "id": "gallery-auto-path-reference",
-      "title": "Gallery Auto (path reference)",
-      "supportedInputKinds": ["text", "image", "path_reference"],
-      "lifecycle": "auto-run",
-      "keywords": ["gallery", "demo", "showcase", "file", "path"]
-    },
-    {
       "id": "gallery-draft",
       "title": "Gallery Draft",
-      "supportedInputKinds": ["text", "image", "path_reference"],
+      "supportedItemTypes": ["text", "image", "path_reference"],
       "lifecycle": "draft",
       "keywords": ["gallery", "demo", "showcase", "draft"],
       "uiEntry": "actions/gallery-draft/index.html"

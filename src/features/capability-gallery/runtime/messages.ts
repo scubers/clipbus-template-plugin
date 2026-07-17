@@ -6,7 +6,6 @@
 export const GALLERY_RPC_KEYS = {
   itemReadAttachment: "gallery.host.item.readAttachment",
   itemMaterializeImagePath: "gallery.host.item.materializeImagePath",
-  actionMaterializeInputImagePath: "gallery.host.action.materializeInputImagePath",
   itemSetTags: "gallery.host.item.setTags",
   itemAddTags: "gallery.host.item.addTags",
   itemRemoveTags: "gallery.host.item.removeTags",

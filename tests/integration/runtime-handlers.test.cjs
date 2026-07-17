@@ -165,9 +165,11 @@ describe('template auto-run action', () => {
   }
 
   const sampleActionInput = {
-    sourceItem: sampleItem,
+    item: sampleItem,
     content: textContent,
     attachments: [],
+    action: { actionID: 'template-auto-action', label: 'Auto' },
+    trigger: { kind: 'manual' },
   };
 
   test('runAutoAction returns a result object with resultKind', async () => {
@@ -196,7 +198,7 @@ describe('gallery draft action', () => {
   }
 
   const sampleSessionInput = {
-    sourceItem: sampleItem,
+    item: sampleItem,
     content: textContent,
     attachments: [],
   };

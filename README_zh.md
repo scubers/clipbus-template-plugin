@@ -13,7 +13,7 @@
 | 文档 | 用途 |
 |---|---|
 | [GUIDE_zh.md](./GUIDE_zh.md) | 插件开发完整指南：快速开始、架构、manifest、三类入口实现、入参形状、权限模型、坑点 Q&A |
-| `API.md`（随 [`@clipbus/plugin-sdk`](https://www.npmjs.com/package/@clipbus/plugin-sdk) 发布） | 自动生成的 API 真相源，覆盖全部 capability、host event 与命名 wire type |
+| `API.md`（随 [`@clipbus/plugin-sdk`](https://www.npmjs.com/package/@clipbus/plugin-sdk) 发布） | 由 `protocol/plugin/src/catalog.ts` 自动生成的 API 真相源：26 个 capability、7 个 host event、22 个命名类型的精确签名 |
 | `SPECIFICATION.md`（随 [`@clipbus/plugin-sdk`](https://www.npmjs.com/package/@clipbus/plugin-sdk) 发布） | SDK 形状规则（Topic / OptionalTopic / Stream / Verb）、命名约定、扩展 capability 的 PR 流程 |
 
 > SDK 包内的 `API.md` 是**镜像文件**。运行 `cd protocol/plugin && npm run codegen` 时由 codegen 自动同步——文档与 catalog 不会漂移。
@@ -68,22 +68,21 @@ template-plugin/
 ### auto-run action
 
 - 文件：`src/features/auto-action/action.ts`
-- 演示：schema v3 `supportedInputKinds`、原始 `sourceItem` 与当前 `content` 的区分，以及可继续进入宿主级联的无 UI Action 结果
+- 演示：无 UI action，runtime 完全闭环，返回 `actionResult.text(...)`/`actionResult.none(...)` 形态的执行上下文
 
 模板还声明了 `template-auto-action-text` / `template-auto-action-image` 两个子变体，用于演示超出免费配额后的 Plugin Pro 门控行为（manifest 共 4 个 action，超过默认配额 3 个）。
 
 ### draft action
 
 - 文件：`src/features/capability-gallery/runtime/draft-action.ts` + `src/features/capability-gallery/draft-action-ui/app.vue`（manifest id：`gallery-draft`）
-- 演示：`resolveSession` 返回 `initialDraft` + buttons seed，`clipbus.action.input` 提供脱敏后的当前值，最终由 `clipbus.action.complete(...)` 提交。Draft 结果是终点，不会进入下一步级联。
+- 演示：`resolveSession` 返回 `initialDraft` + buttons seed → UI 自管表单状态 → `clipbus.action.complete(...)` 提交
 
 ### capability-gallery（全集合 API 参考）
 
 - 目录：`src/features/capability-gallery/`（详见 [`src/features/capability-gallery/README.md`](./src/features/capability-gallery/README.md)）
-- 角色：覆盖当前 Action input topic、当前图片物化与安全 `path_reference` 结果的 SDK 能力参考
-- 包含：1 detector（×3 attachment）+ 4 个 auto-run action + 1 draft action + 3 个 attachment renderer + 4 个 WebView
-- 图片展示：renderer 用 `clipbus.asset.currentItemImageUrl()` 显示原始 item；draft Action 用 `clipbus.asset.currentActionInputImageUrl()` 显示当前级联值；Node 产图继续经 `host.asset.registerImage()`
-- 文件结果：`gallery-auto-path-reference` 演示通过 `inputIndex` 复用当前输入，或写入 `host.action.allocateOutputFilePath()` 后返回 `allocated_file`
+- 角色：与上面 4 个最小样板互补的 "SDK 全能力演示" feature——覆盖 26 个 capability 中的 25 个（仅 `asset.pathReferenceImageUrl` 未单独演示）、7 个 host event、4 个 permission、3 种 height 形态、3 种 actionResult 形态、3 种 item kind
+- 包含：1 detector（×3 attachment）+ 3 个 auto-run action + 1 draft action + 3 个 attachment renderer + 4 个 WebView（bounded 主舞台 + fixed + auto + draft-action）；3 个 attachment renderer 均已接入预览 scenario（`gallery-fixed-240`、`gallery-auto`、`gallery-bounded-120-480`）
+- 图片展示：bounded renderer 与 draft action 经 `clipbus.asset.currentItemImageUrl()` 取 `clipbus-asset://` URL 在 `<img>` 显示当前 item 图，并经 `host.asset.registerImage()` 显示 Node 产出的纯色图（见 [GUIDE_zh.md](./GUIDE_zh.md) §6.6）
 - 用途：三方插件作者想"这个 SDK 到底能做什么"的可点击参考
 
 ## 起步改造清单

@@ -30,7 +30,7 @@ function summarizeExecution(
   input: PluginAutoRunActionInput,
   ctx: unknown
 ): string {
-  const display = buildItemDisplay(input?.sourceItem, input?.content);
+  const display = buildItemDisplay(input?.item, input?.content);
   const snapshot = buildActionExecutionSnapshot(input as Parameters<typeof buildActionExecutionSnapshot>[0], ctx as CtxShape);
   return [
     displayName,
@@ -81,19 +81,14 @@ export function createTemplateAutoActionImageOnly(): PluginAutoRunActionHandler 
   return {
     resolveSession: autoRunResolveSessionStub,
     async runAutoAction(input: PluginAutoRunActionInput, ctx: unknown): Promise<PluginActionOperationResult> {
-      const display = buildItemDisplay(input?.sourceItem, input?.content);
+      const display = buildItemDisplay(input?.item, input?.content);
       const snapshot = buildActionExecutionSnapshot(input as Parameters<typeof buildActionExecutionSnapshot>[0], ctx as CtxShape);
 
       let imagePath: string | null = null;
       try {
-        const ctxAny = ctx as {
-          host?: {
-            action?: {
-              materializeInputImagePath?: () => Promise<{ path: string }>;
-            };
-          };
-        } | null;
-        const response = await ctxAny?.host?.action?.materializeInputImagePath?.();
+        // P5: materializeImagePath returns { path: string } per catalog contract.
+        const ctxAny = ctx as { host?: { item?: { materializeImagePath?: (p: Record<string, never>) => Promise<{ path: string }> } } } | null;
+        const response = await ctxAny?.host?.item?.materializeImagePath?.({} as Record<string, never>);
         imagePath = typeof response?.path === "string" ? response.path : null;
       } catch {
         // host may not support verb — degrade gracefully

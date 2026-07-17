@@ -120,7 +120,6 @@ export function createGalleryMessageHandlers(): Record<string, MessageTuple[1]> 
   const bridges: ReadonlyArray<MessageTuple> = [
     defineMessage<GalleryRpcRequest, GalleryRpcResponse>(GALLERY_RPC_KEYS.itemReadAttachment).handle(makeHostBridge("item", "readAttachment")),
     defineMessage<GalleryRpcRequest, GalleryRpcResponse>(GALLERY_RPC_KEYS.itemMaterializeImagePath).handle(makeHostBridge("item", "materializeImagePath")),
-    defineMessage<GalleryRpcRequest, GalleryRpcResponse>(GALLERY_RPC_KEYS.actionMaterializeInputImagePath).handle(makeHostBridge("action", "materializeInputImagePath")),
     defineMessage<GalleryRpcRequest, GalleryRpcResponse>(GALLERY_RPC_KEYS.itemSetTags).handle(makeHostBridge("item", "setTags")),
     defineMessage<GalleryRpcRequest, GalleryRpcResponse>(GALLERY_RPC_KEYS.itemAddTags).handle(makeHostBridge("item", "addTags")),
     defineMessage<GalleryRpcRequest, GalleryRpcResponse>(GALLERY_RPC_KEYS.itemRemoveTags).handle(makeHostBridge("item", "removeTags")),
@@ -138,16 +137,14 @@ export function createGalleryMessageHandlers(): Record<string, MessageTuple[1]> 
       async (_req, ctx) => {
         const ctxAny = ctx as {
           host?: {
-            action?: {
-              materializeInputImagePath?: () => Promise<{ path: string }>;
-              allocateImageTempPath?: (p: { formatHint: string }) => Promise<{ path: string }>;
-            };
+            item?: { materializeImagePath?: (p: Record<string, never>) => Promise<{ path: string }> };
+            action?: { allocateImageTempPath?: (p: { formatHint: string }) => Promise<{ path: string }> };
           };
         };
-        const materialized = await ctxAny?.host?.action?.materializeInputImagePath?.();
+        const materialized = await ctxAny?.host?.item?.materializeImagePath?.({} as Record<string, never>);
         const sourcePath = materialized?.path;
         if (typeof sourcePath !== "string" || sourcePath.length === 0) {
-          throw new Error("materializeInputImagePath returned no path; current Action input may not be an image");
+          throw new Error("materializeImagePath returned no path; item may not be an image");
         }
         const ext = path.extname(sourcePath).toLowerCase().replace(/^\./, "");
         const imageFormatHint = ext || "png";

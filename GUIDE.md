@@ -20,7 +20,6 @@ This project (`plugins/template-plugin/`) is the **scaffold and runnable example
 ### Prerequisites
 
 - Node.js >= 18
-- Clipbus plugin manifest schema v3 / `@clipbus/plugin-sdk` 0.9.x
 
 ### Initialize
 
@@ -64,11 +63,6 @@ Clipbus → Settings → Plugins → the Developer Plugins section provides life
 | **View Logs** | Shown in the `installFailed` state; opens the most recent install log (supports live tail). |
 
 States: `installing` → installing; `installFailed` → non-zero exit code or runtime unreachable; `ready` → usable.
-
-Existing schema v2 plugins must rename Action `supportedItemTypes` to
-`supportedInputKinds`. The host intentionally does not provide a v2 runtime
-adapter; incompatible installed/development sources remain visible as
-`requiresUpdate` until rebuilt.
 
 ### Production build
 

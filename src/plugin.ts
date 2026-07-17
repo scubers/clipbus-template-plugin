@@ -19,7 +19,6 @@ import {
   createAutoActionText,
   createAutoActionImage,
   createAutoActionNone,
-  createAutoActionPathReference,
 } from "./features/capability-gallery/runtime/auto-actions";
 import { createGalleryDraftAction, createGalleryMessageHandlers } from "./features/capability-gallery/runtime/draft-action";
 
@@ -60,7 +59,6 @@ export default definePlugin({
         "gallery-auto-text": createAutoActionText(),
         "gallery-auto-image": createAutoActionImage(),
         "gallery-auto-none": createAutoActionNone(),
-        "gallery-auto-path-reference": createAutoActionPathReference(),
         "gallery-draft": createGalleryDraftAction(),
       },
       messageHandlers: {

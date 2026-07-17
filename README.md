@@ -13,7 +13,7 @@ This single project is all you need to build a production-ready Clipbus plugin �
 | Document | Purpose |
 |---|---|
 | [GUIDE.md](./GUIDE.md) | Complete plugin development guide: quick start, architecture, manifest, the three entry-point types, input shapes, permission model, pitfall Q&A |
-| `API.md` (published with [`@clipbus/plugin-sdk`](https://www.npmjs.com/package/@clipbus/plugin-sdk)) | The generated API source of truth for every capability, host event, and named wire type |
+| `API.md` (published with [`@clipbus/plugin-sdk`](https://www.npmjs.com/package/@clipbus/plugin-sdk)) | The API source of truth, auto-generated from `protocol/plugin/src/catalog.ts`: precise signatures for 26 capabilities, 7 host events, and 22 named types |
 | `SPECIFICATION.md` (published with [`@clipbus/plugin-sdk`](https://www.npmjs.com/package/@clipbus/plugin-sdk)) | SDK shape rules (Topic / OptionalTopic / Stream / Verb), naming conventions, and the PR process for extending capabilities |
 
 > The `API.md` inside the SDK package is a **mirror file**. It is synced automatically by codegen when you run `cd protocol/plugin && npm run codegen` — the docs never drift from the catalog.
@@ -68,22 +68,21 @@ template-plugin/
 ### auto-run action
 
 - File: `src/features/auto-action/action.ts`
-- Demonstrates: schema v3 `supportedInputKinds`, the distinction between original `sourceItem` and current `content`, and a UI-less result that can continue through the host cascade
+- Demonstrates: a UI-less action with a fully self-contained runtime, returning execution contexts in the `actionResult.text(...)` / `actionResult.none(...)` shapes
 
 The template also declares two sub-variants, `template-auto-action-text` / `template-auto-action-image`, to demonstrate the Plugin Pro gating behavior once you exceed the free quota (the manifest declares 4 actions in total, over the default quota of 3).
 
 ### draft action
 
 - Files: `src/features/capability-gallery/runtime/draft-action.ts` + `src/features/capability-gallery/draft-action-ui/app.vue` (manifest id: `gallery-draft`)
-- Demonstrates: `resolveSession` returning `initialDraft` + a buttons seed, `clipbus.action.input` exposing the sanitized current value, and `clipbus.action.complete(...)`. Draft results are terminal and do not enter another cascade step.
+- Demonstrates: `resolveSession` returning `initialDraft` + a buttons seed → the UI manages its own form state → submitting via `clipbus.action.complete(...)`
 
 ### capability-gallery (full API reference)
 
 - Directory: `src/features/capability-gallery/` (see [`src/features/capability-gallery/README.md`](./src/features/capability-gallery/README.md) for details)
-- Role: a broad SDK capability reference, including current Action input topics, current-image materialization, and safe `path_reference` results
-- Contains: 1 detector (×3 attachments) + 4 auto-run actions + 1 draft action + 3 attachment renderers + 4 WebViews (bounded main stage + fixed + auto + draft-action)
-- Image display: renderers use `clipbus.asset.currentItemImageUrl()` for the original item; the draft Action uses `clipbus.asset.currentActionInputImageUrl()` for the current cascade value. Node-produced images still use `host.asset.registerImage()`.
-- File output: `gallery-auto-path-reference` either reuses a current input entry by `inputIndex` or writes to `host.action.allocateOutputFilePath()` and returns an `allocated_file` result.
+- Role: a "full SDK capability demo" feature that complements the four minimal samples above — covering 25 of the 26 capabilities (only `asset.pathReferenceImageUrl` is not demonstrated separately), 7 host events, 4 permissions, 3 height shapes, 3 actionResult shapes, and 3 item kinds
+- Contains: 1 detector (×3 attachments) + 3 auto-run actions + 1 draft action + 3 attachment renderers + 4 WebViews (bounded main stage + fixed + auto + draft-action); all 3 attachment renderers are wired in the preview scenarios (`gallery-fixed-240`, `gallery-auto`, `gallery-bounded-120-480`)
+- Image display: the bounded renderer and the draft action use `clipbus.asset.currentItemImageUrl()` to obtain a `clipbus-asset://` URL and show the current item's image in an `<img>`, and use `host.asset.registerImage()` to display a solid-color image produced by Node (see [GUIDE.md](./GUIDE.md) §6.6)
 - Use case: a clickable reference for third-party plugin authors wondering "what exactly can this SDK do?"
 
 ## Getting-started customization checklist
