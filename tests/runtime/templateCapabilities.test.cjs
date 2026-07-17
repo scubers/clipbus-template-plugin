@@ -206,6 +206,24 @@ test("preview workbench delegates to SDK harness instead of custom shell", () =>
   );
 });
 
+test("Draft Action preview distinguishes the original item from the current cascade input", () => {
+  const { actionScenarios } = require(path.resolve(
+    projectRoot,
+    "src/preview/scenarios/actionScenarios.ts"
+  ));
+
+  assert.deepEqual(
+    actionScenarios.map((scenario) => scenario.item.type),
+    ["text", "text", "text"],
+    "all scenarios should preserve the original text item identity"
+  );
+  assert.deepEqual(
+    actionScenarios.map((scenario) => scenario.actionInput.kind),
+    ["text", "path_reference", "image"],
+    "current Action input should independently cover each supported cascade value kind"
+  );
+});
+
 test("template detector emits preview attachment for text input", async () => {
 
   const artifacts = await detectTemplateAttachment({

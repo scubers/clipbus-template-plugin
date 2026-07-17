@@ -7,6 +7,11 @@
         Covers <code>clipbus.action.setButtons</code> and the 3 <code>complete()</code> result kinds.
         Host-side buttons fire <code>clipbus.action.onHostInvoke</code>.
       </p>
+      <p class="draft-shell__terminal-note" role="note">
+        <span class="draft-shell__terminal-mark" aria-hidden="true" />
+        Terminal lifecycle: <code>complete()</code> returns one final result to the host;
+        Draft Actions never continue the cascade.
+      </p>
     </header>
 
     <section class="draft-shell__panel">
@@ -446,6 +451,34 @@ onUnmounted(() => {
   padding: 1px 4px;
   border-radius: 4px;
   background: var(--clipbus-surface-elevated, rgba(248, 250, 252, 0.78));
+}
+
+.draft-shell__terminal-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 3px 0 0;
+  padding: 7px 9px;
+  border-left: 2px solid var(--clipbus-accent, #2563eb);
+  border-radius: 5px;
+  background: var(--clipbus-surface-elevated, rgba(248, 250, 252, 0.78));
+  color: var(--clipbus-text-secondary, #475569);
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+
+.draft-shell__terminal-note code {
+  font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
+}
+
+.draft-shell__terminal-mark {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  margin-top: 4px;
+  border-radius: 50%;
+  background: var(--clipbus-accent, #2563eb);
 }
 
 .draft-shell__panel {

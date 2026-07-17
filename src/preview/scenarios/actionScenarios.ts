@@ -3,7 +3,7 @@ import type { PreviewScenario } from '@clipbus/plugin-sdk/preview';
 const PLUGIN_ID = 'plugin.template.full';
 const BASE_ITEM_TAGS = ['template-plugin'];
 
-// width omitted → uses the SDK's per-view default (action ≈ 675, native ⌘K panel).
+// Width omitted → uses the SDK's compact Draft Action default (350px).
 const ACTION_VIEWPORT = { heightPolicy: 'fixed' as const, height: 250 };
 const ACTION_BUTTONS = [
   { id: 'copy-item-json', title: 'Copy Item JSON', isEnabled: true },
@@ -16,7 +16,7 @@ const DEFAULT_BUTTON_ID = 'apply-metadata';
 export const actionScenarios: PreviewScenario[] = [
   {
     id: 'default-draft',
-    label: 'Default Draft',
+    label: 'Original text → current text',
     mode: 'action',
     pluginID: PLUGIN_ID,
     viewport: ACTION_VIEWPORT,
@@ -41,7 +41,7 @@ export const actionScenarios: PreviewScenario[] = [
   },
   {
     id: 'prefilled-note',
-    label: 'Prefilled Note',
+    label: 'Original text → current paths',
     mode: 'action',
     pluginID: PLUGIN_ID,
     viewport: ACTION_VIEWPORT,
@@ -69,7 +69,7 @@ export const actionScenarios: PreviewScenario[] = [
   },
   {
     id: 'long-copy-buttons',
-    label: 'Long Content',
+    label: 'Original text → current image',
     mode: 'action',
     pluginID: PLUGIN_ID,
     viewport: ACTION_VIEWPORT,
