@@ -7,15 +7,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, "..");
 
-async function exists(relativePath) {
-  try {
-    await access(path.resolve(projectRoot, relativePath));
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 async function resolveNpmExecutable() {
   const configured = process.env.CLIPBUS_PLUGIN_NPM_PATH;
   if (configured) {
@@ -48,9 +39,5 @@ function run(command, args) {
 }
 
 const npmExecutable = await resolveNpmExecutable();
-const hasNodeModules = await exists("node_modules");
-if (!hasNodeModules) {
-  await run(npmExecutable, ["install"]);
-}
-
+await run(npmExecutable, ["install"]);
 await run(npmExecutable, ["run", "build"]);
