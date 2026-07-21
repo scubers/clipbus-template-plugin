@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "plugin": {
     "id": "plugin.template.full",
     "title": "Template Plugin",

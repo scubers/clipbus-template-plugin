@@ -68,14 +68,14 @@ template-plugin/
 ### auto-run action
 
 - File: `src/features/auto-action/action.ts`
-- Demonstrates: schema v3 `supportedInputKinds`, the distinction between original `sourceItem` and current `content`, and a UI-less result that can continue through the host cascade
+- Demonstrates: schema v4 `supportedInputKinds`, the distinction between original `sourceItem` and current `content`, and a UI-less result that can continue through the host cascade
 
 The template also declares two sub-variants, `template-auto-action-text` / `template-auto-action-image`, to demonstrate the Plugin Pro gating behavior once you exceed the free quota (the manifest declares 4 actions in total, over the default quota of 3).
 
 ### draft action
 
 - Files: `src/features/capability-gallery/runtime/draft-action.ts` + `src/features/capability-gallery/draft-action-ui/app.vue` (manifest id: `gallery-draft`)
-- Demonstrates: `resolveSession` returning `initialDraft` + a buttons seed, `clipbus.action.input` exposing the sanitized current value, and `clipbus.action.complete(...)`. Draft results are terminal and do not enter another cascade step.
+- Demonstrates: `resolveSession` returning `initialDraft` + a buttons seed, `clipbus.action.input` exposing the sanitized current value, and `clipbus.action.complete(...)`. In the real host, successful `text`, `image`, and `path_reference` results are presented for confirmation and can be explicitly advanced by the user; `none` cannot advance. Completion itself never auto-advances.
 
 ### capability-gallery (full API reference)
 

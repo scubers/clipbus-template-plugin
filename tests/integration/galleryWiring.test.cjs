@@ -118,12 +118,10 @@ function loadDraftCatalogVerbs() {
 // were moved to Node-runtime-only (host.item.*) in the plugin-api-shrink rollout.
 // They are no longer available in the UI clipbus.* namespace and are not shown in
 // the bounded-ui catalog.
-// NOTE: `item.setAttachments` is intentionally excluded from the gallery demo
-// — the SDK has no clear-all variant, and core's parseReplaceRequest rejects
-// `{attachments: []}` (attachment_json_api.cpp L91-103). A live "write demo
-// attachment" would litter the user's history with an orphaned record without
-// educational value. The `setAttachment` permission stays declared in manifest
-// for plugin authors who legitimately use it; this is purely a demo gap.
+// NOTE: `item.setAttachments` has a runtime RPC bridge and a dedicated wire
+// roundtrip that uses the v4 scope-free entry shape. It is intentionally absent
+// from the live gallery button grid because a demo mutation would leave a local
+// record on the user's history item.
 const EXPECTED_BASE_VERBS = new Set([
   'runtime.invoke',
   'item.readAttachment',

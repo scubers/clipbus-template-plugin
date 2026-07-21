@@ -38,10 +38,11 @@ capability-gallery/
     └── app.vue                       action.{setButtons,complete×3,allocate…} + image asset
 ```
 
-## Capability coverage matrix (UI scope)
+## Capability coverage matrix
 
-Every capability verb visible to a UI runtime is wired below. The "where"
-column points to the demo button or component you click in the running plugin.
+Every capability verb is documented below. Runtime-only item mutations are
+reached through the gallery's user-RPC bridge; the "where" column explicitly
+marks cases that are contract-tested without a live button.
 
 | domain | verb | where | scope |
 |---|---|---|---|
@@ -50,7 +51,7 @@ column points to the demo button or component you click in the running plugin.
 | item | `item.addTags` | bounded-ui · Item mutations | base (perm: setTags) |
 | item | `item.removeTags` | bounded-ui · Item mutations | base (perm: setTags) |
 | item | `item.setPinned` | bounded-ui · Item mutations | base (perm: setPinned) |
-| item | `item.setAttachments` | bounded-ui · Item mutations | base (perm: setAttachment) |
+| item | `item.setAttachments` | registered runtime RPC bridge; wire test only | runtime (perm: setAttachment) |
 | item | `item.setSearchExtension` | bounded-ui · Item mutations | base (perm: setSearchExtension) |
 | item | `item.materializeImagePath` | bounded-ui · Item reads | base |
 | item | `item.readAttachment` | bounded-ui · Item reads | base |
@@ -72,6 +73,21 @@ column points to the demo button or component you click in the running plugin.
 That's **23 verbs total**: 19 base + 1 attachment + 3 action. The contract
 test at `tests/integration/galleryWiring.test.cjs` enforces that every entry
 above appears as a button (or programmatic call) in the gallery catalogs.
+
+In the real host, `complete` with a `text`, `image`, or `path_reference` value
+enters a result-confirmation stage from which the user can explicitly continue
+the Action cascade; `none` cannot continue. Calling `complete` never advances
+automatically. The local Preview workbench records the call but deliberately
+does not simulate the host's confirmation, next-step filtering, rollback, or
+focus state machine.
+
+In manifest schema v4, detector artifacts and `item.setAttachments` entries do
+not carry a sync-scope field. The host always persists their attachments as
+local-only derived data. The gallery's wire test sends a scope-free mutation
+payload and proves that it reaches `item.setAttachments`; the running gallery
+intentionally has no clickable attachment-write button because it would leave
+a demo record on the user's history item. Searchable cross-device text remains
+an explicit `searchProjection` / `item.setSearchExtension` concern.
 
 ### Image asset rendering (`clipbus.asset`)
 

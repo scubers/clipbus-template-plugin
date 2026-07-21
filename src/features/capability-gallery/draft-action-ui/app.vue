@@ -7,10 +7,10 @@
         Covers <code>clipbus.action.setButtons</code> and the 3 <code>complete()</code> result kinds.
         Host-side buttons fire <code>clipbus.action.onHostInvoke</code>.
       </p>
-      <p class="draft-shell__terminal-note" role="note">
-        <span class="draft-shell__terminal-mark" aria-hidden="true" />
-        Terminal lifecycle: <code>complete()</code> returns one final result to the host;
-        Draft Actions never continue the cascade.
+      <p class="draft-shell__result-note" role="note">
+        <span class="draft-shell__result-mark" aria-hidden="true" />
+        Result confirmation: <code>complete()</code> returns a value to the host;
+        text, image, and path-reference results may be explicitly continued, while none cannot.
       </p>
     </header>
 
@@ -453,7 +453,7 @@ onUnmounted(() => {
   background: var(--clipbus-surface-elevated, rgba(248, 250, 252, 0.78));
 }
 
-.draft-shell__terminal-note {
+.draft-shell__result-note {
   display: flex;
   align-items: flex-start;
   gap: 7px;
@@ -467,12 +467,12 @@ onUnmounted(() => {
   line-height: 1.4;
 }
 
-.draft-shell__terminal-note code {
+.draft-shell__result-note code {
   font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
   font-size: 10px;
 }
 
-.draft-shell__terminal-mark {
+.draft-shell__result-mark {
   flex: 0 0 auto;
   width: 6px;
   height: 6px;

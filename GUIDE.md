@@ -20,7 +20,7 @@ This project (`plugins/template-plugin/`) is the **scaffold and runnable example
 ### Prerequisites
 
 - Node.js >= 18
-- Clipbus plugin manifest schema v3 / `@clipbus/plugin-sdk` 0.9.x
+- Clipbus plugin manifest schema v4 / `@clipbus/plugin-sdk` 0.9.x
 
 ### Initialize
 
@@ -38,7 +38,7 @@ The dependency `@clipbus/plugin-sdk` is an independently published npm package (
 npm run dev
 ```
 
-Starts the Vite preview workbench. `src/preview/preview-host/main.ts` calls `createPreviewWorkbench` from `@clipbus/plugin-sdk/preview`; the SDK harness provides the workbench chrome (two-level Renderer/Draft Action navigation with a scenario dropdown for both UI surfaces, 4-preset theme switcher, native card shell, per-view width slider, in-card button strip), host→plugin wire injection and `--clipbus-*` CSS variable mirroring, call log panel (all plugin→host native calls), and viewport height tracking via `clipbus.window.setHeight`. Draft Action scenarios keep the original `item` identity while `actionInput` models the current cascade value, which may have a different kind. Editing `src/features/*/app.vue` triggers a hot-reload.
+Starts the Vite preview workbench. `src/preview/preview-host/main.ts` calls `createPreviewWorkbench` from `@clipbus/plugin-sdk/preview`; the SDK harness provides the workbench chrome (two-level Renderer/Draft Action navigation with a scenario dropdown for both UI surfaces, 4-preset theme switcher, native card shell, per-view width slider, in-card button strip), host→plugin wire injection and `--clipbus-*` CSS variable mirroring, call log panel (all plugin→host native calls), and viewport height tracking via `clipbus.window.setHeight`. Draft Action scenarios keep the original `item` identity while `actionInput` models the current cascade value, which may have a different kind. The harness records `complete(...)` but intentionally does not simulate the real host's result-confirmation, explicit next-step, dynamic Action filtering, rollback, or focus state machine. Editing `src/features/*/app.vue` triggers a hot-reload.
 
 You can also open a targeted view directly:
 
@@ -65,8 +65,9 @@ Clipbus → Settings → Plugins → the Developer Plugins section provides life
 
 States: `installing` → installing; `installFailed` → non-zero exit code or runtime unreachable; `ready` → usable.
 
-Existing schema v2 plugins must rename Action `supportedItemTypes` to
-`supportedInputKinds`. The host intentionally does not provide a v2 runtime
+Schema v3 plugins must remove detector `attachmentSyncScope` and attachment
+mutation entry `syncScope`, then set `schemaVersion` to `4`. The host owns the
+local-only persistence policy and intentionally provides no v3 runtime
 adapter; incompatible installed/development sources remain visible as
 `requiresUpdate` until rebuilt.
 

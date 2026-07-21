@@ -68,14 +68,14 @@ template-plugin/
 ### auto-run action
 
 - 文件：`src/features/auto-action/action.ts`
-- 演示：schema v3 `supportedInputKinds`、原始 `sourceItem` 与当前 `content` 的区分，以及可继续进入宿主级联的无 UI Action 结果
+- 演示：schema v4 `supportedInputKinds`、原始 `sourceItem` 与当前 `content` 的区分，以及可继续进入宿主级联的无 UI Action 结果
 
 模板还声明了 `template-auto-action-text` / `template-auto-action-image` 两个子变体，用于演示超出免费配额后的 Plugin Pro 门控行为（manifest 共 4 个 action，超过默认配额 3 个）。
 
 ### draft action
 
 - 文件：`src/features/capability-gallery/runtime/draft-action.ts` + `src/features/capability-gallery/draft-action-ui/app.vue`（manifest id：`gallery-draft`）
-- 演示：`resolveSession` 返回 `initialDraft` + buttons seed，`clipbus.action.input` 提供脱敏后的当前值，最终由 `clipbus.action.complete(...)` 提交。Draft 结果是终点，不会进入下一步级联。
+- 演示：`resolveSession` 返回 `initialDraft` + buttons seed，`clipbus.action.input` 提供脱敏后的当前值，最终由 `clipbus.action.complete(...)` 提交。真实宿主会先展示成功结果供确认；`text`、`image` 与 `path_reference` 可由用户显式推进，`none` 不可继续，完成本身不会自动级联。
 
 ### capability-gallery（全集合 API 参考）
 
