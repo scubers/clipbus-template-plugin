@@ -54,8 +54,10 @@ harness 完整 API（scenario 配置、视口策略、调用日志）见 `node_m
 Clipbus → Settings → Plugins → Developer Plugins 区段提供开发插件生命周期管理：
 
 1. **Add Path** — 选择含 `manifest.json` 的目录（即 `sourceRootPath`）。
-2. 若 `manifest.json` 声明了 `install` 字段，Clipbus **自动执行安装脚本**，工作目录为 `sourceRootPath`。`node_modules/` 等产物落到工程目录（等价于你手动 `npm install`）。
+2. 若 `manifest.json` 声明了 `install` 字段，Clipbus 会先展示风险说明，只有你明确确认后才执行安装脚本；工作目录为 `sourceRootPath`。`node_modules/` 等产物落到工程目录（等价于你手动 `npm install`）。
 3. 安装日志写入 `<AppData>/development-plugins/<pluginID>/install-logs/`，不会污染你的 git status。
+
+> **安装 hook 安全边界：**只有在你信任所选插件源码及其依赖树后才应确认。hook 与 npm package scripts 以当前用户权限运行，**不在沙箱内**；它们可以启动当前用户可用的任意程序、读写当前用户可访问的文件，并可访问网络。宿主清理后的环境变量只能减少凭据被意外继承，不能阻止子进程或网络外连。Clipbus 通过 `CLIPBUS_PLUGIN_NPM_PATH` 提供已验证的 npm command 或 CLI。本模板解析 symlink 后，用 `process.execPath <npm-cli> ...` 运行 JavaScript CLI，其他由宿主提供的 npm executable/shim 则直接执行；刻意不提供 `npm` PATH fallback。变量缺失或路径不可用时，安装会 fail-closed。
 
 | 按钮 | 行为 |
 |---|---|

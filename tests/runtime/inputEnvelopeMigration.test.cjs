@@ -218,7 +218,7 @@ test("(c) no detector or action source reads legacy action input.item", () => {
   ];
 
   const banned = [
-    "input.item.text",
+    "input.item" + ".text",
     "input?.item?.text",
     "input.item, input.content",
     "input?.item, input?.content",

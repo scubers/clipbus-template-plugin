@@ -8,6 +8,8 @@
 
 只需要这一个工程就能开发出生产可用的 Clipbus 插件——架构、API、字段约束都以代码为真相源，文档同步更新。
 
+> **确认 manifest install hook 前：**请先审查并信任插件源码与依赖树。安装 hook 和 npm package scripts 以当前用户权限、在非沙箱环境运行，可以启动程序、读写当前用户可访问的文件并访问网络。Clipbus 通过 `CLIPBUS_PLUGIN_NPM_PATH` 提供已验证的 npm command 或 CLI：本模板用当前 Node 运行 JavaScript CLI，其他由宿主提供的 npm executable/shim 则直接执行；绝不 fallback 到 PATH 中的 `npm`。完整边界见 [GUIDE_zh.md](./GUIDE_zh.md)。
+
 ## 三份必读文档
 
 | 文档 | 用途 |
@@ -27,6 +29,7 @@ template-plugin/
 ├── scripts/
 │   ├── build-runtime.mjs
 │   ├── build-ui.mjs
+│   ├── install.mjs
 │   └── verify-build.mjs
 ├── src/
 │   ├── features/                       ← 每个能力一个文件夹
@@ -102,7 +105,7 @@ template-plugin/
 
 - `@clipbus/plugin-sdk`——独立 SDK 包；扩展 capability 见包内 `SPECIFICATION.md`（[`@clipbus/plugin-sdk`](https://www.npmjs.com/package/@clipbus/plugin-sdk)）
 - `src/shared/`——共享工具
-- `scripts/build-runtime.mjs` / `scripts/build-ui.mjs`
+- `scripts/install.mjs` / `scripts/build-runtime.mjs` / `scripts/build-ui.mjs`
 
 ## 三个常用命令
 

@@ -34,6 +34,8 @@ interface InputShape {
   buttonID?: unknown;
   item?: unknown;
   sourceItem?: unknown;
+  content?: unknown;
+  attachments?: unknown;
   attachment?: unknown;
 }
 
@@ -63,9 +65,9 @@ export function buildActionExecutionSnapshot(
     requestID: (ctx?.request as { id?: unknown } | null | undefined)?.id ?? null,
     pluginID: (ctx?.plugin as { id?: unknown } | null | undefined)?.id ?? null,
     capability: ctx?.capability ?? null,
-    triggerSource: input?.triggerSource ?? null,
-    buttonID: input?.buttonID ?? null,
     sourceItem: input?.sourceItem ?? null,
+    content: input?.content ?? null,
+    attachments: input?.attachments ?? [],
     hostCapabilities: (ctx?.host as { capabilities?: unknown } | null | undefined)?.capabilities ?? {}
   };
 }

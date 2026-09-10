@@ -25,29 +25,35 @@ function makeFixture(t) {
 import { appendFileSync } from 'node:fs';
 
 const args = process.argv.slice(2);
-appendFileSync(process.env.FAKE_NPM_LOG, JSON.stringify(args) + '\\n');
+appendFileSync(
+  process.env.FAKE_NPM_LOG,
+  JSON.stringify({ execPath: process.execPath, args }) + '\\n',
+);
 if (process.env.FAKE_NPM_FAIL_INSTALL === '1' && args[0] === 'install') {
   process.exit(17);
 }
 `,
   );
-  fs.chmodSync(fakeNpm, 0o755);
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
 
   return { root, fakeNpm, logPath };
 }
 
 function runInstallHook(fixture, extraEnv = {}) {
+  const env = {
+    ...process.env,
+    CLIPBUS_PLUGIN_NPM_PATH: fixture.fakeNpm,
+    FAKE_NPM_LOG: fixture.logPath,
+    FAKE_NPM_FAIL_INSTALL: '0',
+    ...extraEnv,
+  };
+  if (extraEnv.CLIPBUS_PLUGIN_NPM_PATH === null) {
+    delete env.CLIPBUS_PLUGIN_NPM_PATH;
+  }
   return spawnSync(process.execPath, [path.join(fixture.root, 'scripts', 'install.mjs')], {
     cwd: fixture.root,
     encoding: 'utf8',
-    env: {
-      ...process.env,
-      CLIPBUS_PLUGIN_NPM_PATH: fixture.fakeNpm,
-      FAKE_NPM_LOG: fixture.logPath,
-      FAKE_NPM_FAIL_INSTALL: '0',
-      ...extraEnv,
-    },
+    env,
   });
 }
 
@@ -56,13 +62,40 @@ function readCalls(logPath) {
   return fs.readFileSync(logPath, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse);
 }
 
-test('install hook refreshes dependencies before building when node_modules exists', (t) => {
+test('install hook uses current Node with staged npm before building', (t) => {
   const fixture = makeFixture(t);
 
   const result = runInstallHook(fixture);
 
   assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(readCalls(fixture.logPath), [['install'], ['run', 'build']]);
+  assert.deepEqual(readCalls(fixture.logPath), [
+    { execPath: process.execPath, args: ['install'] },
+    { execPath: process.execPath, args: ['run', 'build'] },
+  ]);
+});
+
+test('install hook directly executes a host-provided npm shim', {
+  skip: process.platform === 'win32',
+}, (t) => {
+  const fixture = makeFixture(t);
+  const shim = path.join(fixture.root, 'fake-npm');
+  fs.writeFileSync(
+    shim,
+    '#!/bin/sh\nexec "$FAKE_NODE_PATH" "$FAKE_NPM_SCRIPT" "$@"\n',
+    { mode: 0o755 },
+  );
+
+  const result = runInstallHook(fixture, {
+    CLIPBUS_PLUGIN_NPM_PATH: shim,
+    FAKE_NODE_PATH: process.execPath,
+    FAKE_NPM_SCRIPT: fixture.fakeNpm,
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(readCalls(fixture.logPath), [
+    { execPath: process.execPath, args: ['install'] },
+    { execPath: process.execPath, args: ['run', 'build'] },
+  ]);
 });
 
 test('install hook does not build when dependency installation fails', (t) => {
@@ -71,5 +104,33 @@ test('install hook does not build when dependency installation fails', (t) => {
   const result = runInstallHook(fixture, { FAKE_NPM_FAIL_INSTALL: '1' });
 
   assert.notEqual(result.status, 0);
-  assert.deepEqual(readCalls(fixture.logPath), [['install']]);
+  assert.deepEqual(readCalls(fixture.logPath), [
+    { execPath: process.execPath, args: ['install'] },
+  ]);
+});
+
+test('install hook fails closed when host npm path is missing', (t) => {
+  const fixture = makeFixture(t);
+
+  const result = runInstallHook(fixture, {
+    CLIPBUS_PLUGIN_NPM_PATH: null,
+    PATH: fixture.root,
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /CLIPBUS_PLUGIN_NPM_PATH is required/);
+  assert.deepEqual(readCalls(fixture.logPath), []);
+});
+
+test('install hook does not fall back when host npm path is unavailable', (t) => {
+  const fixture = makeFixture(t);
+
+  const result = runInstallHook(fixture, {
+    CLIPBUS_PLUGIN_NPM_PATH: path.join(fixture.root, 'missing-npm-cli.js'),
+    PATH: fixture.root,
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /CLIPBUS_PLUGIN_NPM_PATH is unavailable/);
+  assert.deepEqual(readCalls(fixture.logPath), []);
 });

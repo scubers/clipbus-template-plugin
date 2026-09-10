@@ -8,6 +8,8 @@
 
 This single project is all you need to build a production-ready Clipbus plugin — architecture, APIs, and field constraints all use code as the source of truth, with the docs kept in sync.
 
+> **Before approving the manifest install hook:** review and trust the plugin source and dependency graph. Install hooks and npm package scripts run with current-user permissions, outside a sandbox; they may spawn programs, read or change user-accessible files, and use the network. Clipbus provides its verified npm command or CLI through `CLIPBUS_PLUGIN_NPM_PATH`: this template runs JavaScript CLI files with the current Node process and executes other host-provided npm executables or shims directly. It never falls back to an `npm` found on PATH. See [GUIDE.md](./GUIDE.md) for the full boundary.
+
 ## Three must-read documents
 
 | Document | Purpose |
@@ -27,6 +29,7 @@ template-plugin/
 ├── scripts/
 │   ├── build-runtime.mjs
 │   ├── build-ui.mjs
+│   ├── install.mjs
 │   └── verify-build.mjs
 ├── src/
 │   ├── features/                       ← one folder per capability
@@ -102,7 +105,7 @@ Usually **no need to change**:
 
 - `@clipbus/plugin-sdk` — the standalone SDK package; to extend capabilities see the package's `SPECIFICATION.md` ([`@clipbus/plugin-sdk`](https://www.npmjs.com/package/@clipbus/plugin-sdk))
 - `src/shared/` — shared utilities
-- `scripts/build-runtime.mjs` / `scripts/build-ui.mjs`
+- `scripts/install.mjs` / `scripts/build-runtime.mjs` / `scripts/build-ui.mjs`
 
 ## Three common commands
 

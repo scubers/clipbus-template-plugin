@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { access } from "node:fs/promises";
+import { access, realpath } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -7,22 +7,26 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, "..");
 
-async function resolveNpmExecutable() {
-  const configured = process.env.CLIPBUS_PLUGIN_NPM_PATH;
-  if (configured) {
-    try {
-      await access(configured);
-      return configured;
-    } catch {
-      // fall back to PATH lookup
-    }
+async function requireNpmInvocation() {
+  const npmPath = process.env.CLIPBUS_PLUGIN_NPM_PATH;
+  if (!npmPath) {
+    throw new Error("CLIPBUS_PLUGIN_NPM_PATH is required");
   }
-  return "npm";
+  try {
+    await access(npmPath);
+  } catch {
+    throw new Error("CLIPBUS_PLUGIN_NPM_PATH is unavailable");
+  }
+  const effectivePath = await realpath(npmPath).catch(() => npmPath);
+  const isJavaScriptCli = /\.(?:c|m)?js$/i.test(effectivePath);
+  return isJavaScriptCli
+    ? { command: process.execPath, prefix: [npmPath] }
+    : { command: npmPath, prefix: [] };
 }
 
-function run(command, args) {
+function runNpm(invocation, args) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, {
+    const child = spawn(invocation.command, [...invocation.prefix, ...args], {
       cwd: projectRoot,
       stdio: "inherit",
       env: process.env
@@ -33,11 +37,11 @@ function run(command, args) {
         resolve();
         return;
       }
-      reject(new Error(`${command} ${args.join(" ")} failed with exit code ${code}`));
+      reject(new Error(`npm ${args.join(" ")} failed with exit code ${code}`));
     });
   });
 }
 
-const npmExecutable = await resolveNpmExecutable();
-await run(npmExecutable, ["install"]);
-await run(npmExecutable, ["run", "build"]);
+const npmInvocation = await requireNpmInvocation();
+await runNpm(npmInvocation, ["install"]);
+await runNpm(npmInvocation, ["run", "build"]);

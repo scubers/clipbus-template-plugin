@@ -54,8 +54,10 @@ For the full harness API (scenario configuration, viewport policy, call log), se
 Clipbus → Settings → Plugins → the Developer Plugins section provides lifecycle management for development plugins:
 
 1. **Add Path** — select the directory containing `manifest.json` (i.e. the `sourceRootPath`).
-2. If `manifest.json` declares an `install` field, Clipbus **runs the install script automatically**, with the working directory set to `sourceRootPath`. Artifacts such as `node_modules/` land in the project directory (equivalent to running `npm install` yourself).
+2. If `manifest.json` declares an `install` field, Clipbus first presents a risk disclosure and requires your explicit confirmation before running it, with the working directory set to `sourceRootPath`. Artifacts such as `node_modules/` land in the project directory (equivalent to running `npm install` yourself).
 3. Install logs are written to `<AppData>/development-plugins/<pluginID>/install-logs/` and will not pollute your git status.
+
+> **Install-hook security boundary:** confirm only after you trust the selected plugin source and its dependency graph. The hook and npm package scripts run with your current-user permissions; they are **not sandboxed**. They can spawn any program available to your user, read or change user-accessible files, and access the network. A scrubbed host environment reduces accidental credential inheritance, but it does not prevent child processes or network egress. Clipbus supplies a verified npm command or CLI through `CLIPBUS_PLUGIN_NPM_PATH`. The template resolves symlinks, runs JavaScript CLI files as `process.execPath <npm-cli> ...`, and directly executes other host-provided npm executables or shims. It deliberately has no `npm` PATH fallback; a missing or unavailable variable fails closed.
 
 | Button | Behavior |
 |---|---|
