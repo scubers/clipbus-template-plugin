@@ -12,6 +12,7 @@
 const { describe, test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 
 const projectRoot = path.resolve(__dirname, '..', '..');
@@ -277,6 +278,38 @@ describe('plugin-show-case wiring', () => {
         },
       },
     ]);
+  });
+
+  test('Gallery solid image registers the host-allocated session path', async (t) => {
+    const { createGalleryMessageHandlers } = require(path.resolve(
+      projectRoot, 'src/features/capability-gallery/runtime/draft-action.ts',
+    ));
+    const { GALLERY_RPC_KEYS } = require(path.resolve(
+      projectRoot, 'src/features/capability-gallery/runtime/messages.ts',
+    ));
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'clipbus-gallery-solid-'));
+    t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+    const allocatedPath = path.join(directory, 'image.png');
+    let allocations = 0;
+    const response = await createGalleryMessageHandlers()[GALLERY_RPC_KEYS.createSolidImage](
+      {},
+      { host: {
+        asset: {
+          async allocateImageTempPath({ formatHint }) {
+            assert.equal(formatHint, 'png');
+            allocations++;
+            return { path: allocatedPath };
+          },
+          async registerImage({ path: source }) {
+            assert.equal(source, allocatedPath);
+            assert.equal(fs.readFileSync(source).subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+            return { url: 'clipbus-asset://image/test' };
+          },
+        },
+      } },
+    );
+    assert.equal(allocations, 1);
+    assert.deepEqual(response, { url: 'clipbus-asset://image/test' });
   });
 
   test('gallery detector emits 3 attachments per supported input kind', async () => {

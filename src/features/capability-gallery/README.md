@@ -64,6 +64,7 @@ marks cases that are contract-tested without a live button.
 | settings | `settings.get` | bounded-ui · Settings | base |
 | settings | `settings.getAll` | bounded-ui · Settings | base |
 | console | `console.log` | bounded-ui · Diagnostics | base |
+| console | `console.diagnostic` | bounded-ui · Diagnostics, closed event/reason/count/duration | base |
 | textInput | `textInput.stateChanged` | bounded-ui · TextInputProbe (focus/blur) | base |
 | attachmentRenderer | `attachmentRenderer.setButtons` | bounded-ui app onMounted; fixed-ui app onMounted | attachment |
 | action | `action.allocateImageTempPath` | draft-action-ui · catalog button | action |
@@ -101,12 +102,14 @@ than a catalog button:
 | `asset.currentActionInputImageUrl` | ui/action | draft-action-ui · current Action image |
 | `action.materializeInputImagePath` | runtime/action | gallery-auto-image; draft copy-image RPC |
 | `action.allocateOutputFilePath` | runtime/action | gallery-auto-path-reference |
-| `asset.registerImage` | runtime | bounded-ui · ImagePanel & draft-action-ui — "Generate solid image (Node)" button → `createSolidImage` RPC |
+| `asset.allocateImageTempPath` + `asset.registerImage` | runtime | bounded-ui · ImagePanel & draft-action-ui — "Generate solid image (Node)" button → `createSolidImage` RPC |
 
 The button asks the Node runtime to generate a random solid-color PNG
 (`runtime/solid-png.ts`, a zero-dep encoder), register it via
 `host.asset.registerImage`, and hand back the `clipbus-asset://` URL the WebView
 renders in an `<img>`.
+Both UIs first obtain a session-owned PNG path through
+`host.asset.allocateImageTempPath`; Windows rejects unallocated source paths.
 
 > **Coverage gap:** the third asset verb, `asset.pathReferenceImageUrl`, is
 > **not** demonstrated — it needs a clipboard `path_reference` item pointing at

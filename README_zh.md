@@ -88,6 +88,7 @@ template-plugin/
 - 图片展示：renderer 用 `clipbus.asset.currentItemImageUrl()` 显示原始 item；draft Action 用 `clipbus.asset.currentActionInputImageUrl()` 显示当前级联值；Node 产图继续经 `host.asset.registerImage()`
 - 文件结果：`gallery-auto-path-reference` 演示通过 `inputIndex` 复用当前输入，或写入 `host.action.allocateOutputFilePath()` 后返回 `allocated_file`
 - 用途：三方插件作者想"这个 SDK 到底能做什么"的可点击参考
+- 诊断：gallery 的 `console.diagnostic` 动作把固定事件和安全计数送入日志控制台；旧 `console.log` 文本不进入产品落盘日志。
 
 ## 起步改造清单
 

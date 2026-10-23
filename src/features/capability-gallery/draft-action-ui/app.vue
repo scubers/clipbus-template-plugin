@@ -96,11 +96,13 @@
       <button
         type="button"
         class="draft-shell__btn draft-shell__btn--image"
+        :disabled="generatingImage"
         @click="generateSolidImage"
       >
-        <strong class="draft-shell__btn-label">Generate solid image (Node)</strong>
+        <strong class="draft-shell__btn-label">{{ generatingImage ? "Generating…" : "Generate solid image (Node)" }}</strong>
         <code class="draft-shell__btn-api">clipbus.runtime.invoke(createSolidImage)</code>
       </button>
+      <p v-if="generatedImageError" class="draft-shell__img-error" role="alert">{{ generatedImageError }}</p>
       <img
         v-if="generatedImageUrl"
         :src="generatedImageUrl"
@@ -310,6 +312,8 @@ async function handleClick(button: GalleryActionButton): Promise<void> {
 
 const currentImageUrl = ref<string | null>(null);
 const generatedImageUrl = ref<string | null>(null);
+const generatedImageError = ref<string | null>(null);
+const generatingImage = ref(false);
 
 async function loadCurrentActionInputImage(): Promise<void> {
   const ts = new Date().toISOString();
@@ -328,21 +332,31 @@ async function loadCurrentActionInputImage(): Promise<void> {
 }
 
 async function generateSolidImage(): Promise<void> {
+  if (generatingImage.value) return;
+  generatingImage.value = true;
+  generatedImageUrl.value = null;
+  generatedImageError.value = null;
   const ts = new Date().toISOString();
   try {
     const response = await clipbus.runtime.invoke<GallerySolidImageResponse>({
       key: GALLERY_RPC_KEYS.createSolidImage,
       payload: {},
     });
+    if (typeof response?.url !== "string" || response.url.length === 0) {
+      throw new Error("runtime returned no image URL");
+    }
     generatedImageUrl.value = response.url;
     pushLog({ ts, api: `clipbus.runtime.invoke({ key: "${GALLERY_RPC_KEYS.createSolidImage}" })`, detail: response.url });
   } catch (err) {
+    generatedImageError.value = err instanceof Error ? err.message : String(err);
     pushLog({
       ts,
       api: `clipbus.runtime.invoke({ key: "${GALLERY_RPC_KEYS.createSolidImage}" })`,
-      detail: err instanceof Error ? err.message : String(err),
+      detail: generatedImageError.value,
       error: true,
     });
+  } finally {
+    generatingImage.value = false;
   }
 }
 
@@ -619,6 +633,12 @@ onUnmounted(() => {
   font-size: 11px;
   font-style: italic;
   color: var(--clipbus-text-tertiary, #64748b);
+}
+
+.draft-shell__img-error {
+  margin: 0;
+  color: #dc2626;
+  font-size: 11px;
 }
 
 .draft-shell__btn--image {

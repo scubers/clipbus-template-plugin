@@ -88,6 +88,7 @@ The template also declares two sub-variants, `template-auto-action-text` / `temp
 - Image display: renderers use `clipbus.asset.currentItemImageUrl()` for the original item; the draft Action uses `clipbus.asset.currentActionInputImageUrl()` for the current cascade value. Node-produced images still use `host.asset.registerImage()`.
 - File output: `gallery-auto-path-reference` either reuses a current input entry by `inputIndex` or writes to `host.action.allocateOutputFilePath()` and returns an `allocated_file` result.
 - Use case: a clickable reference for third-party plugin authors wondering "what exactly can this SDK do?"
+- Diagnostics: the gallery's `console.diagnostic` action sends a closed event and safe counts to the Log Console. Legacy `console.log` text is omitted from the persisted product log.
 
 ## Getting-started customization checklist
 

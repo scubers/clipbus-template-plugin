@@ -51,6 +51,8 @@ For the full harness API (scenario configuration, viewport policy, call log), se
 
 ### Debugging inside Clipbus
 
+For plugin runtime or UI diagnostics, call `host.console.diagnostic` / `clipbus.console.diagnostic` with a fixed event, reason, count, and duration. Open Clipbus → Settings → Advanced → Log Console to inspect them. Legacy `console.log` messages are not stored as product log text; avoid sending private content or paths. The exact payload vocabulary is in the SDK `API.md`.
+
 Clipbus → Settings → Plugins → the Developer Plugins section provides lifecycle management for development plugins:
 
 1. **Add Path** — select the directory containing `manifest.json` (i.e. the `sourceRootPath`).

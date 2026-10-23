@@ -157,8 +157,17 @@ export const galleryCapabilitySections: CapabilitySection[] = [
   {
     id: "diagnostics",
     title: "Diagnostics",
-    description: "clipbus.console.log — surfaces to host logging at the requested level.",
+    description: "Legacy console output stores metadata only; structured diagnostics show safe event details in Log Console.",
     buttons: [
+      {
+        id: "console-diagnostic",
+        label: "diagnostic(action completed)",
+        apiSignature: "clipbus.console.diagnostic({ level, event, reason, count, durationMs })",
+        invoke: () => clipbus.console.diagnostic({
+          level: "info", event: "action_completed", reason: "none",
+          count: 1, durationMs: 42,
+        }),
+      },
       {
         id: "console-log-info",
         label: "log(info)",

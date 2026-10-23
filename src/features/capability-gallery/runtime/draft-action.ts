@@ -14,7 +14,6 @@ import type {
   RuntimeMessageContract,
 } from "@clipbus/plugin-sdk/runtime";
 import { promises as fs } from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { GALLERY_RPC_KEYS, type GalleryCopyImageResponse, type GalleryRpcRequest, type GalleryRpcResponse, type GallerySolidImageResponse } from "./messages.ts";
 import { solidColorPng } from "./solid-png.ts";
@@ -160,13 +159,16 @@ export function createGalleryMessageHandlers(): Record<string, MessageTuple[1]> 
         return { imageTempPath: tempPath, imageFormatHint };
       },
     ),
-    // createSolidImage — Node generates a solid-color PNG, registers it through
-    // host.asset.registerImage, and returns the clipbus-asset:// URL the WebView
-    // renders. Demonstrates the B (Node-produced image) path end-to-end.
+    // Both Draft and renderer documents register an owner-allocated image.
     defineMessage<Record<string, never>, GallerySolidImageResponse>(GALLERY_RPC_KEYS.createSolidImage).handle(
       async (_req, ctx) => {
         const ctxAny = ctx as {
-          host?: { asset?: { registerImage?: (p: { path: string }) => Promise<{ url: string }> } };
+          host?: {
+            asset?: {
+              allocateImageTempPath?: (p: { formatHint: string }) => Promise<{ path: string }>;
+              registerImage?: (p: { path: string }) => Promise<{ url: string }>;
+            };
+          };
         };
         const registerImage = ctxAny?.host?.asset?.registerImage;
         if (typeof registerImage !== "function") {
@@ -179,19 +181,13 @@ export function createGalleryMessageHandlers(): Record<string, MessageTuple[1]> 
           Math.floor(Math.random() * 256),
         ];
         const png = solidColorPng(160, 160, rgb);
-        const tmpPath = path.join(
-          os.tmpdir(),
-          `clipbus.gallery-solid-${Date.now()}-${Math.random().toString(36).slice(2)}.png`,
-        );
-        await fs.writeFile(tmpPath, png);
-        try {
-          // Host validates + copies into the session owner dir, then mints a
-          // token; our temp original can be removed right after.
-          const { url } = await registerImage({ path: tmpPath });
-          return { url };
-        } finally {
-          await fs.unlink(tmpPath).catch(() => {});
+        const allocated = await ctxAny?.host?.asset?.allocateImageTempPath?.({ formatHint: "png" });
+        if (typeof allocated?.path !== "string" || allocated.path.length === 0) {
+          throw new Error("asset.allocateImageTempPath returned no path");
         }
+        await fs.writeFile(allocated.path, png);
+        const { url } = await registerImage({ path: allocated.path });
+        return { url };
       },
     ),
   ];

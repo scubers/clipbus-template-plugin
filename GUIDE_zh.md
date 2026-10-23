@@ -51,6 +51,8 @@ harness 完整 API（scenario 配置、视口策略、调用日志）见 `node_m
 
 ### 在 Clipbus 中调试
 
+插件 runtime 或 UI 的诊断请用 `host.console.diagnostic` / `clipbus.console.diagnostic`，只传固定事件、原因、计数与耗时；在 Clipbus → 设置 → 高级 → 日志控制台查看。旧 `console.log` 的正文不会进入产品落盘日志，不要发送隐私正文或路径。准确入参见 SDK `API.md`。
+
 Clipbus → Settings → Plugins → Developer Plugins 区段提供开发插件生命周期管理：
 
 1. **Add Path** — 选择含 `manifest.json` 的目录（即 `sourceRootPath`）。
