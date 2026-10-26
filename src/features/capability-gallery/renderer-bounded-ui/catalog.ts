@@ -1,39 +1,28 @@
-// Single source of truth for the bounded renderer capability gallery.
-// Each button declares an apiSignature (used by tests/integration/galleryWiring.test.cjs
-// to verify that every base-scope SDK verb has at least one demo button) and
-// an invoke() function that drives the actual call.
+// The bounded page's capability board: one button per page-side capability,
+// plus the runtime probes that run the same capabilities inside a message
+// call. Each button logs what it sent and what came back (or the error).
 //
-// IMPORTANT: when the SDK adds a new base-scope capability verb,
-//   1. Add a button entry below referencing it.
-//   2. Update EXPECTED_BASE_VERBS in galleryWiring.test.cjs.
-//
-// Post plugin-api-shrink (commit cd2130cf):
-//   - The 7 item.* write verbs and action.allocateImageTempPath are now
-//     runtime-only (side: 'runtime'). They are NOT callable from UI; the
-//     bounded renderer demonstrates one of them (item.setTags) via the
-//     runtime-bridge pattern (clipbus.runtime.invoke → Node messageHandler →
-//     host.item.setTags). The remaining 6 mirror handlers live in
-//     ../runtime/draft-action.ts:createGalleryMessageHandlers and can be
-//     wired in additional bridge buttons if needed.
-//   - item.readAttachment is still UI-callable (side: 'both').
-//
-// The bounded renderer cannot call action-scope verbs
-// (clipbus.action.{setButtons,complete}) — those live in
-// draft-action-ui/catalog.ts.
+// Page writes (item.set*, tags, pin) commit at once and come back as
+// item.changed. They are interactive writes owned by the plugin, not by a
+// detector, so re-detection leaves them alone.
 
-import { clipbus } from "@clipbus/plugin-sdk/ui";
-import { GALLERY_RPC_KEYS } from "../runtime/messages.ts";
-
-// Module-level ref so close(last) can target the most recently opened panel.
-let _lastInfoPanelID: string | null = null;
-
-export type GalleryPermissionID = "setTags" | "setPinned" | "setAttachment" | "setSearchExtension";
+import { ctx } from "@clipbus/plugin-sdk/view";
+import type { PluginMethodName } from "@clipbus/plugin-sdk";
+import {
+  failOnPurpose,
+  GALLERY_COUNTER_KEY,
+  GALLERY_NOTE_SCOPE,
+  galleryCounter,
+  renderSwatch,
+  RUNTIME_PROBES,
+  runtimeProbe,
+} from "../contracts";
 
 export interface CapabilityButton {
   id: string;
   label: string;
-  apiSignature: string;
-  permissionRequired?: GalleryPermissionID;
+  /** What the button calls, shown under the label and in the log. */
+  signature: string;
   invoke(): Promise<unknown>;
 }
 
@@ -44,303 +33,134 @@ export interface CapabilitySection {
   buttons: CapabilityButton[];
 }
 
-function nowIsoTag(): string {
-  return new Date().toISOString().replace(/[^0-9A-Za-z]/g, "").slice(8, 14);
+const PAGE_TAG = "gallery-page";
+const CHECKED_CAPABILITIES: PluginMethodName[] = ["renderer.update", "runtime.call", "input.imagePath"];
+
+async function bumpCounter() {
+  const [stored] = (await galleryCounter.get(ctx, { key: GALLERY_COUNTER_KEY })).filter((attachment) => attachment.own);
+  const payload = { count: (stored?.payload.count ?? 0) + 1, writer: "page" as const };
+  await galleryCounter.set(ctx, [{ key: GALLERY_COUNTER_KEY, payload }]);
+  return payload;
 }
 
-const SETTINGS_KEY = "plugin.template.full.gallery.label";
+/** system.openPath and system.reveal need an existing absolute path: let the runtime draw a swatch. */
+async function swatchPath(): Promise<string> {
+  return (await renderSwatch.call({ color: "#0ea5e9" })).absolutePath;
+}
 
-export const galleryCapabilitySections: CapabilitySection[] = [
+function button(id: string, label: string, signature: string, invoke: () => Promise<unknown>): CapabilityButton {
+  return { id, label, signature, invoke };
+}
+
+export const capabilitySections: CapabilitySection[] = [
   {
     id: "item-read",
     title: "Item reads",
-    description: "clipbus.item.* (read) — UI-callable directly. Writes moved to runtime-bridge section.",
+    description: "ctx.item reads the card item only; getAttachments returns every matching attachment, own marks this plugin's.",
     buttons: [
-      {
-        id: "item-readAttachment",
-        label: "readAttachment",
-        apiSignature: "clipbus.item.readAttachment({ attachmentType, attachmentKey })",
-        // attachmentKey must match what the detector emits. The gallery detector
-        // (runtime/detector.ts L59) emits `attachmentKey: kind` where `kind` is
-        // the literal "bounded"/"auto"/"fixed". This card is in the bounded
-        // renderer, so the matching key is "bounded". Passing "self" or any
-        // other value makes the host return `payloadJson: nil` → log shows `{}`.
-        invoke: () => clipbus.item.readAttachment({
-          attachmentType: "plugin.template.full.gallery.bounded",
-          attachmentKey: "bounded",
-        }),
-      },
+      button("item-get", "get()", "ctx.item.get()", () => ctx.item.get()),
+      button("item-getContent", "getContent()", "ctx.item.getContent()", () => ctx.item.getContent()),
+      button("item-getAttachments", "getAttachments()", "ctx.item.getAttachments({ type?, key? })", () => ctx.item.getAttachments()),
     ],
   },
   {
-    id: "clipboard",
-    title: "Clipboard",
-    description: "clipbus.clipboard.* — host writes to the user clipboard.",
+    id: "item-write",
+    title: "Item writes",
+    description: "Commit at once and come back as item.changed. The counter type has no renderer, so it never shows as a card.",
     buttons: [
-      {
-        id: "clipboard-copyText",
-        label: "copyText",
-        apiSignature: "clipbus.clipboard.copyText({ text })",
-        invoke: () => clipbus.clipboard.copyText({ text: `Gallery demo @ ${nowIsoTag()}` }),
-      },
+      button("item-setAttachments", "setAttachments(counter + 1)", "galleryCounter.set(ctx, entries)", bumpCounter),
+      button("item-setAttachments-clear", "setAttachments([])", "galleryCounter.set(ctx, [])", () => galleryCounter.set(ctx, [])),
+      button("item-setSearchExtension", "setSearchExtension(note)", "ctx.item.setSearchExtension({ scope, entries })", () =>
+        ctx.item.setSearchExtension({
+          scope: GALLERY_NOTE_SCOPE,
+          entries: [{ key: "page", text: "gallery note written by the page", label: "Gallery" }],
+        })),
+      button("item-setSearchExtension-clear", "setSearchExtension([])", "ctx.item.setSearchExtension({ scope, entries: [] })", () =>
+        ctx.item.setSearchExtension({ scope: GALLERY_NOTE_SCOPE, entries: [] })),
+      button("item-addTags", `addTags(${PAGE_TAG})`, "ctx.item.addTags({ tags })", () => ctx.item.addTags({ tags: [PAGE_TAG] })),
+      button("item-removeTags", `removeTags(${PAGE_TAG})`, "ctx.item.removeTags({ tags })", () => ctx.item.removeTags({ tags: [PAGE_TAG] })),
+      button("item-setTags", "setTags(keep user tags)", "ctx.item.setTags({ tags })", async () => {
+        // setTags replaces every tag, including the user's: keep theirs.
+        const { tags } = await ctx.item.get();
+        return ctx.item.setTags({ tags: [...tags.filter((tag) => tag !== PAGE_TAG), PAGE_TAG] });
+      }),
+      button("item-setPinned", "setPinned(toggle)", "ctx.item.setPinned({ pinned })", async () => {
+        const { pinned } = await ctx.item.get();
+        return ctx.item.setPinned({ pinned: !pinned });
+      }),
     ],
   },
   {
-    id: "navigation",
-    title: "Navigation",
-    description: "clipbus.navigation.* — open URLs and OS paths.",
+    id: "system",
+    title: "System",
+    description: "Side effects run at once. openPath and reveal take an existing absolute path; the runtime draws a swatch for them.",
     buttons: [
-      {
-        id: "navigation-openUrl",
-        label: "openUrl",
-        apiSignature: "clipbus.navigation.openUrl({ url })",
-        invoke: () => clipbus.navigation.openUrl({ url: "https://clipbus.app/" }),
-      },
-      {
-        id: "navigation-revealInFinder",
-        label: "revealInFinder",
-        apiSignature: "clipbus.navigation.revealInFinder({ path })",
-        invoke: () => clipbus.navigation.revealInFinder({ path: "/tmp" }),
-      },
-      {
-        id: "navigation-openFilePath",
-        label: "openFilePath",
-        apiSignature: "clipbus.navigation.openFilePath({ path })",
-        invoke: () => clipbus.navigation.openFilePath({ path: "/tmp" }),
-      },
+      button("system-copyText", "copyText", "ctx.system.copyText({ text })", () =>
+        ctx.system.copyText({ text: `Gallery demo @ ${new Date().toLocaleTimeString()}` })),
+      button("system-openUrl", "openUrl", "ctx.system.openUrl({ url })", () => ctx.system.openUrl({ url: "https://clipbus.app/" })),
+      button("system-openPath", "openPath(swatch)", "ctx.system.openPath({ path })", async () => ctx.system.openPath({ path: await swatchPath() })),
+      button("system-reveal", "reveal(swatch)", "ctx.system.reveal({ path })", async () => ctx.system.reveal({ path: await swatchPath() })),
+      button("system-openUrl-blocked", "openUrl(file:)", "rejected: blocked scheme", () => ctx.system.openUrl({ url: "file:///etc/hosts" })),
     ],
   },
   {
-    id: "window",
-    title: "Window sizing",
-    description: "clipbus.window.* — programmatic height control inside the bounded shape.",
+    id: "card",
+    title: "Card appearance",
+    description: "renderer.update: title, tint and buttons are written back to the attachment card; height lasts for this display; null returns to the default.",
     buttons: [
-      {
-        id: "window-setHeight-480",
-        label: "setHeight(480)",
-        apiSignature: "clipbus.window.setHeight({ height })",
-        invoke: () => clipbus.window.setHeight({ height: 480 }),
-      },
-      {
-        id: "window-setHeight-120",
-        label: "setHeight(120)",
-        apiSignature: "clipbus.window.setHeight({ height })",
-        invoke: () => clipbus.window.setHeight({ height: 120 }),
-      },
-      {
-        id: "window-autoFit",
-        label: "autoFit()",
-        apiSignature: "clipbus.window.autoFit()",
-        invoke: () => clipbus.window.autoFit(),
-      },
+      button("renderer-title", "title", "ctx.renderer.update({ title })", () =>
+        ctx.renderer.update({ title: `Renamed @ ${new Date().toLocaleTimeString()}` })),
+      button("renderer-tint", "tint", "ctx.renderer.update({ tint })", () => ctx.renderer.update({ tint: "#7C3AED" })),
+      button("renderer-reset", "title + tint → default", "ctx.renderer.update({ title: null, tint: null })", () =>
+        ctx.renderer.update({ title: null, tint: null })),
+      button("renderer-height-480", "height 480", "ctx.renderer.update({ height })", () => ctx.renderer.update({ height: 480 })),
+      button("renderer-height-120", "height 120", "ctx.renderer.update({ height })", () => ctx.renderer.update({ height: 120 })),
+      button("renderer-height-null", "height → default", "ctx.renderer.update({ height: null })", () => ctx.renderer.update({ height: null })),
+      button("renderer-invalid", "tint: \"red\"", "rejected: PluginInvalidRequest", () => ctx.renderer.update({ tint: "red" })),
     ],
   },
   {
-    id: "settings",
-    title: "Settings",
-    description: "clipbus.settings.* — read external settings JSON; plugin defaults to its own prefix.",
+    id: "env",
+    title: "Startup snapshot, env and settings",
+    description: "The snapshot and plugin identity are local; env.get and settings.get ask the Host. capabilities.has tells which methods the Host serves to this page.",
     buttons: [
-      {
-        id: "settings-get",
-        label: "get(label)",
-        apiSignature: "clipbus.settings.get({ key })",
-        invoke: () => clipbus.settings.get({ key: SETTINGS_KEY }),
-      },
-      {
-        id: "settings-getAll",
-        label: "getAll()",
-        apiSignature: "clipbus.settings.getAll()",
-        invoke: () => clipbus.settings.getAll(),
-      },
+      button("renderer-context", "renderer.context()", "ctx.renderer.context(contract)", async () => ctx.renderer.context()),
+      button("plugin", "plugin", "ctx.plugin", async () => ctx.plugin),
+      button("capabilities", "capabilities.has", "ctx.capabilities.has(name)", async () =>
+        Object.fromEntries(CHECKED_CAPABILITIES.map((name) => [name, ctx.capabilities.has(name)]))),
+      button("env-get", "env.get()", "ctx.env.get()", () => ctx.env.get()),
+      button("settings-get", "settings.get()", "ctx.settings.get()", () => ctx.settings.get()),
     ],
   },
   {
-    id: "diagnostics",
-    title: "Diagnostics",
-    description: "Legacy console output stores metadata only; structured diagnostics show safe event details in Log Console.",
+    id: "log",
+    title: "Plugin log",
+    description: "Writes go to the plugin's own log file. forwardConsole() in main.ts also sends console output there.",
     buttons: [
-      {
-        id: "console-diagnostic",
-        label: "diagnostic(action completed)",
-        apiSignature: "clipbus.console.diagnostic({ level, event, reason, count, durationMs })",
-        invoke: () => clipbus.console.diagnostic({
-          level: "info", event: "action_completed", reason: "none",
-          count: 1, durationMs: 42,
-        }),
-      },
-      {
-        id: "console-log-info",
-        label: "log(info)",
-        apiSignature: "clipbus.console.log({ level, message })",
-        invoke: () => clipbus.console.log({ level: "info", message: "[gallery] info entry" }),
-      },
-      {
-        id: "console-log-warn",
-        label: "log(warn)",
-        apiSignature: "clipbus.console.log({ level, message })",
-        invoke: () => clipbus.console.log({ level: "warn", message: "[gallery] warn entry" }),
-      },
-      {
-        id: "console-log-error",
-        label: "log(error)",
-        apiSignature: "clipbus.console.log({ level, message })",
-        invoke: () => clipbus.console.log({ level: "error", message: "[gallery] error entry" }),
-      },
+      button("log-write", "log.write", "ctx.log.write({ level, message })", () =>
+        ctx.log.write({ level: "info", message: "[gallery] log.write from the page" })),
+      button("log-info", "log.info", "ctx.log.info(...args)", async () => ctx.log.info("[gallery] info", { from: "page" })),
+      button("log-warn", "log.warn", "ctx.log.warn(...args)", async () => ctx.log.warn("[gallery] warn", 42)),
+      button("log-error", "log.error", "ctx.log.error(...args)", async () => ctx.log.error("[gallery] error", new Error("demo"))),
+      button("console-log", "console.log", "console.log (forwardConsole)", async () => console.log("[gallery] console.log, forwarded")),
     ],
   },
   {
-    id: "text-input",
-    title: "Text-input state",
-    description: "clipbus.textInput.stateChanged — host hides global shortcuts while a probe is focused. The probe in this panel emits real focus/blur events; this button is the manual equivalent.",
+    id: "messages",
+    title: "Messages",
+    description: "contract.call() sends a typed message to the plugin runtime. A handler error keeps its own name; a missing handler is PluginHandlerNotFound.",
     buttons: [
-      {
-        id: "textInput-stateChanged",
-        label: "stateChanged(isFocused: true)",
-        apiSignature: "clipbus.textInput.stateChanged({ isFocused, isComposing })",
-        invoke: () => clipbus.textInput.stateChanged({ isFocused: true, isComposing: false }),
-      },
+      button("message-swatch", "renderSwatch", "renderSwatch.call({ color? })", () => renderSwatch.call({})),
+      button("message-fail", "fail on purpose", "failOnPurpose.call({ reason })", () => failOnPurpose.call({ reason: "demo" })),
+      button("message-missing", "unknown message", "ctx.runtime.call({ name, data })", () =>
+        ctx.runtime.call({ name: "gallery.missing", data: null })),
     ],
   },
   {
-    id: "info-panel",
-    title: "Info panel",
-    description: "clipbus.infoPanel.* — open a rich info panel with blocks, badges, and actions. Buttons fire onAction events back to the plugin.",
-    buttons: [
-      {
-        id: "infoPanel-open-full",
-        label: "open(full demo)",
-        apiSignature: "clipbus.infoPanel.open({ document })",
-        invoke: async () => {
-          const result = await clipbus.infoPanel.open({
-            document: {
-              icon: "📋",
-              title: "Gallery Info Panel",
-              subtitle: "All 7 block types demonstrated",
-              badges: ["demo", "gallery", "v1"],
-              blocks: [
-                { type: "label", text: "Text styles" },
-                { type: "text", text: "Body text — normal readable prose.", style: "body" },
-                { type: "text", text: "mono text — fixed-width, like a path or hash.", style: "mono" },
-                { type: "text", text: "Muted text — de-emphasised secondary note.", style: "muted" },
-                { type: "divider" },
-                { type: "label", text: "Code block (JSON)" },
-                { type: "code", text: JSON.stringify({ plugin: "template", version: "0.1.0", ts: new Date().toISOString() }, null, 2), language: "json" },
-                { type: "divider" },
-                { type: "label", text: "QR code" },
-                { type: "qrCode", value: "https://clipbus.app/" },
-                { type: "divider" },
-                { type: "label", text: "Fields" },
-                {
-                  type: "fields",
-                  fields: [
-                    { key: "Plugin", value: "template-plugin" },
-                    { key: "Surface", value: "bounded renderer" },
-                    { key: "Hash", value: "a1b2c3d4e5f6", isMono: true },
-                  ],
-                },
-                { type: "divider" },
-                { type: "label", text: "Tags" },
-                { type: "tags", tags: ["gallery", "info-panel", "demo", "bounded"] },
-              ],
-              actions: [
-                { id: "copy", label: "Copy Text", isPrimary: true },
-                { id: "open-url", label: "Open URL" },
-                { id: "dismiss", label: "Dismiss" },
-              ],
-            },
-          });
-          _lastInfoPanelID = result.panelID;
-          return result;
-        },
-      },
-      {
-        id: "infoPanel-open-minimal",
-        label: "open(minimal)",
-        apiSignature: "clipbus.infoPanel.open({ document })",
-        invoke: async () => {
-          const result = await clipbus.infoPanel.open({
-            document: {
-              title: "Minimal Panel",
-              blocks: [
-                { type: "text", text: "A minimal info panel with one block.", style: "body" },
-              ],
-              actions: [{ id: "ok", label: "OK", isPrimary: true }],
-            },
-          });
-          _lastInfoPanelID = result.panelID;
-          return result;
-        },
-      },
-      {
-        id: "infoPanel-close-last",
-        label: "close(last)",
-        apiSignature: "clipbus.infoPanel.close({ panelID })",
-        invoke: async () => {
-          if (!_lastInfoPanelID) return { skipped: "no panel opened yet" };
-          const result = await clipbus.infoPanel.close({ panelID: _lastInfoPanelID });
-          _lastInfoPanelID = null;
-          return result;
-        },
-      },
-    ],
-  },
-  {
-    id: "runtime-bridge",
-    title: "Runtime bridge",
-    description: "clipbus.runtime.invoke — round-trip UI → runtime handler → host.* → response. Use these to compare UI-scope vs runtime-scope identical capabilities.",
-    buttons: [
-      {
-        id: "runtime-host-item-readAttachment",
-        label: "host.item.readAttachment",
-        apiSignature: "clipbus.runtime.invoke({ key })",
-        invoke: () => clipbus.runtime.invoke({
-          key: GALLERY_RPC_KEYS.itemReadAttachment,
-          payload: { payload: { attachmentType: "plugin.template.full.gallery.bounded", attachmentKey: "bounded" } },
-        }),
-      },
-      {
-        id: "runtime-host-item-materializeImagePath",
-        label: "host.item.materializeImagePath",
-        apiSignature: "clipbus.runtime.invoke({ key })",
-        invoke: () => clipbus.runtime.invoke({
-          key: GALLERY_RPC_KEYS.itemMaterializeImagePath,
-          payload: { payload: {} },
-        }),
-      },
-      {
-        id: "runtime-host-settings-getAll",
-        label: "host.settings.getAll",
-        apiSignature: "clipbus.runtime.invoke({ key })",
-        invoke: () => clipbus.runtime.invoke({
-          key: GALLERY_RPC_KEYS.settingsGetAll,
-          payload: { payload: {} },
-        }),
-      },
-      {
-        id: "runtime-host-console-log",
-        label: "host.console.log",
-        apiSignature: "clipbus.runtime.invoke({ key })",
-        invoke: () => clipbus.runtime.invoke({
-          key: GALLERY_RPC_KEYS.consoleLog,
-          payload: { payload: { level: "info", message: "[gallery/runtime-bridge] hello from UI" } },
-        }),
-      },
-      // The canonical post-shrink demo: item.setTags moved to side: 'runtime',
-      // so UI invokes it through the user RPC bridge. Mirror handlers for the
-      // other 5 item write verbs (addTags / removeTags / setPinned /
-      // setAttachments / setSearchExtension) are registered in
-      // ../runtime/draft-action.ts:createGalleryMessageHandlers and can be
-      // exposed here by adding similar buttons when needed.
-      {
-        id: "runtime-host-item-setTags",
-        label: "host.item.setTags (runtime-bridge demo)",
-        apiSignature: "clipbus.runtime.invoke({ key })",
-        permissionRequired: "setTags",
-        invoke: () => clipbus.runtime.invoke({
-          key: GALLERY_RPC_KEYS.itemSetTags,
-          payload: { payload: { tags: [`gallery-bridge-${nowIsoTag()}`] } },
-        }),
-      },
-    ],
+    id: "runtime",
+    title: "Runtime probes",
+    description: "runtimeProbe.call({ probe }): the runtime ctx runs one method inside a message call; writes commit when the handler returns.",
+    buttons: RUNTIME_PROBES.map((probe) =>
+      button(`probe-${probe}`, probe, `runtime: ctx.${probe}`, () => runtimeProbe.call({ probe }))),
   },
 ];

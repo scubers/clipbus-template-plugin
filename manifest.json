@@ -1,79 +1,82 @@
 {
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "plugin": {
     "id": "plugin.template.full",
     "title": "Template Plugin",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "install": {
     "runtime": "node",
     "entry": "scripts/install.mjs"
   },
   "runtime": {
-    "nodeEntry": "dist/plugin.cjs",
-    "uiRoot": "dist/ui"
+    "nodeEntry": "dist/plugin.cjs"
   },
-  "permissions": [
-    "setAttachment",
-    "setSearchExtension",
-    "setTags",
-    "setPinned"
+  "detectors": [
+    {
+      "id": "template-detector",
+      "title": "Template Detector",
+      "inputKinds": ["text", "image"]
+    },
+    {
+      "id": "gallery-detector",
+      "title": "Capability Gallery Detector",
+      "inputKinds": ["text", "image"]
+    }
   ],
-  "attachmentRenderers": [
+  "renderers": [
     {
       "id": "template-renderer",
       "title": "Template Preview",
       "attachmentType": "plugin.template.full.preview",
-      "height": 220,
-      "uiEntry": "renderers/template-renderer/index.html"
+      "page": "dist/ui/renderers/template-renderer/index.html",
+      "height": { "min": 220, "max": 220 },
+      "tint": "#0F766E",
+      "buttons": [
+        { "id": "copy-payload", "title": "Copy Payload JSON" },
+        { "id": "copy-context", "title": "Copy Card Context" }
+      ]
     },
     {
       "id": "template-expanded-renderer",
       "title": "Template Expanded",
       "attachmentType": "plugin.template.full.expanded",
+      "page": "dist/ui/renderers/template-expanded-renderer/index.html",
       "height": { "min": 120, "max": 480 },
-      "uiEntry": "renderers/template-expanded-renderer/index.html"
+      "tint": "#2563EB",
+      "buttons": [
+        { "id": "analyze", "title": "Analyze" },
+        { "id": "toggle-debug", "title": "Debug" }
+      ]
     },
     {
       "id": "gallery-renderer-fixed",
       "title": "Gallery (fixed 240)",
       "attachmentType": "plugin.template.full.gallery.fixed",
-      "height": 240,
-      "uiEntry": "renderers/gallery-renderer-fixed/index.html"
+      "page": "dist/ui/renderers/gallery-renderer-fixed/index.html",
+      "height": { "min": 240, "max": 240 },
+      "tint": "#0EA5E9",
+      "buttons": [{ "id": "ping", "title": "Ping" }]
     },
     {
       "id": "gallery-renderer-auto",
       "title": "Gallery (auto)",
       "attachmentType": "plugin.template.full.gallery.auto",
-      "height": "auto",
-      "uiEntry": "renderers/gallery-renderer-auto/index.html"
+      "page": "dist/ui/renderers/gallery-renderer-auto/index.html",
+      "height": { "max": 800 },
+      "tint": "#22C55E"
     },
     {
       "id": "gallery-renderer-bounded",
-      "title": "Gallery (bounded 120-480)",
+      "title": "Gallery (120–480)",
       "attachmentType": "plugin.template.full.gallery.bounded",
+      "page": "dist/ui/renderers/gallery-renderer-bounded/index.html",
       "height": { "min": 120, "max": 480 },
-      "uiEntry": "renderers/gallery-renderer-bounded/index.html"
-    }
-  ],
-  "detectors": [
-    {
-      "id": "template-detector",
-      "title": "Template Detector",
-      "supportedInputKinds": ["text", "image", "path_reference"],
-      "attachmentTypes": [
-        "plugin.template.full.preview",
-        "plugin.template.full.expanded"
-      ]
-    },
-    {
-      "id": "gallery-detector",
-      "title": "Capability Gallery Detector",
-      "supportedInputKinds": ["text", "image", "path_reference"],
-      "attachmentTypes": [
-        "plugin.template.full.gallery.fixed",
-        "plugin.template.full.gallery.auto",
-        "plugin.template.full.gallery.bounded"
+      "tint": "#F97316",
+      "buttons": [
+        { "id": "expand", "title": "Expand" },
+        { "id": "compact", "title": "Compact" },
+        { "id": "autofit", "title": "AutoFit: off" }
       ]
     }
   ],
@@ -81,59 +84,49 @@
     {
       "id": "template-auto-action",
       "title": "Template Auto Action",
-      "supportedInputKinds": ["text", "image", "path_reference"],
-      "lifecycle": "auto-run",
+      "inputKinds": ["text", "image"],
       "keywords": ["template", "metadata", "debug"]
     },
     {
       "id": "template-auto-action-text",
       "title": "Template Auto Action (Text)",
-      "supportedInputKinds": ["text"],
-      "lifecycle": "auto-run",
+      "inputKinds": ["text"],
       "keywords": ["template", "metadata", "debug", "text", "quota"]
     },
     {
       "id": "template-auto-action-image",
       "title": "Template Auto Action (Image)",
-      "supportedInputKinds": ["image"],
-      "lifecycle": "auto-run",
+      "inputKinds": ["image"],
       "keywords": ["template", "metadata", "debug", "image", "quota"]
     },
     {
       "id": "gallery-auto-text",
       "title": "Gallery Auto (text)",
-      "supportedInputKinds": ["text", "image", "path_reference"],
-      "lifecycle": "auto-run",
+      "inputKinds": ["text", "image"],
       "keywords": ["gallery", "demo", "showcase", "text"]
     },
     {
       "id": "gallery-auto-image",
       "title": "Gallery Auto (image)",
-      "supportedInputKinds": ["image"],
-      "lifecycle": "auto-run",
+      "inputKinds": ["text", "image"],
       "keywords": ["gallery", "demo", "showcase", "image"]
     },
     {
       "id": "gallery-auto-none",
       "title": "Gallery Auto (none)",
-      "supportedInputKinds": ["text", "image", "path_reference"],
-      "lifecycle": "auto-run",
+      "inputKinds": ["text", "image"],
       "keywords": ["gallery", "demo", "showcase", "none"]
-    },
-    {
-      "id": "gallery-auto-path-reference",
-      "title": "Gallery Auto (path reference)",
-      "supportedInputKinds": ["text", "image", "path_reference"],
-      "lifecycle": "auto-run",
-      "keywords": ["gallery", "demo", "showcase", "file", "path"]
-    },
-    {
-      "id": "gallery-draft",
-      "title": "Gallery Draft",
-      "supportedInputKinds": ["text", "image", "path_reference"],
-      "lifecycle": "draft",
-      "keywords": ["gallery", "demo", "showcase", "draft"],
-      "uiEntry": "actions/gallery-draft/index.html"
     }
-  ]
+  ],
+  "writes": {
+    "attachmentTypes": [
+      "plugin.template.full.preview",
+      "plugin.template.full.expanded",
+      "plugin.template.full.gallery.fixed",
+      "plugin.template.full.gallery.auto",
+      "plugin.template.full.gallery.bounded",
+      "plugin.template.full.gallery.counter"
+    ],
+    "searchScopes": ["template", "gallery", "gallery.note"]
+  }
 }

@@ -1,95 +1,51 @@
 <template>
   <section class="image-panel">
-    <p class="image-panel__title">Image Asset</p>
+    <p class="image-panel__title">Images</p>
 
     <div class="image-panel__row">
-      <p class="image-panel__label">Current item image (<code>clipbus.asset.currentItemImageUrl</code>)</p>
-      <img
-        v-if="currentImageUrl"
-        :src="currentImageUrl"
-        alt="Current clipboard image"
-        class="image-panel__img"
-      />
-      <p v-else class="image-panel__placeholder">not an image item</p>
+      <p class="image-panel__label">Card item image (<code>ctx.asset.itemImageUrl()</code>)</p>
+      <img v-if="isImageItem" :src="itemImageUrl" alt="Card item image" class="image-panel__img" />
+      <p v-else class="image-panel__placeholder">Not an image item: the Host answers this URL with 404.</p>
     </div>
 
     <div class="image-panel__row">
-      <button
-        type="button"
-        class="image-panel__btn"
-        @click="generateSolidImage"
-      >
-        <span class="image-panel__btn-label">Generate solid image (Node)</span>
-        <code class="image-panel__btn-sig">clipbus.runtime.invoke(createSolidImage)</code>
+      <button type="button" class="image-panel__btn" @click="drawSwatch">
+        <span class="image-panel__btn-label">Draw a swatch in Node</span>
+        <code class="image-panel__btn-sig">renderSwatch.call() → ctx.asset.fileUrl(path)</code>
       </button>
-      <img
-        v-if="generatedImageUrl"
-        :src="generatedImageUrl"
-        alt="Generated solid image"
-        class="image-panel__img"
-      />
+      <img v-if="swatchUrl" :src="swatchUrl" alt="Swatch drawn by the plugin runtime" class="image-panel__img" />
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
-import { clipbus } from "@clipbus/plugin-sdk/ui";
-import { GALLERY_RPC_KEYS, type GallerySolidImageResponse } from "../../runtime/messages";
+import { computed, ref } from "vue";
+import { ctx } from "@clipbus/plugin-sdk/view";
+import { renderSwatch } from "../../contracts";
+import { describeError, timestamp, type LogEntry } from "../log";
 
-interface LogEntry {
-  ts: string;
-  api: string;
-  args?: unknown;
-  result?: unknown;
-  error?: { message: string };
-}
+const props = defineProps<{ itemKind: "text" | "image" }>();
 
 const emit = defineEmits<{
   log: [entry: LogEntry];
 }>();
 
-const currentImageUrl = ref<string | null>(null);
-const generatedImageUrl = ref<string | null>(null);
+// Asset URLs are built locally from the contract convention; the Host serves
+// them to this card only.
+const isImageItem = computed(() => props.itemKind === "image");
+const itemImageUrl = ctx.asset.itemImageUrl();
+const swatchUrl = ref<string | null>(null);
 
-onMounted(async () => {
-  const ts = new Date().toISOString();
+// The runtime writes the PNG into the plugin cache and answers with a
+// plugin-relative path (cache/...); the page turns that path into a URL.
+async function drawSwatch(): Promise<void> {
+  const api = "renderSwatch.call({})";
   try {
-    const response = await clipbus.asset.currentItemImageUrl();
-    currentImageUrl.value = response.url ?? null;
-    emit("log", {
-      ts,
-      api: "clipbus.asset.currentItemImageUrl()",
-      result: response,
-    });
-  } catch (err) {
-    emit("log", {
-      ts,
-      api: "clipbus.asset.currentItemImageUrl()",
-      error: { message: err instanceof Error ? err.message : String(err) },
-    });
-  }
-});
-
-async function generateSolidImage(): Promise<void> {
-  const ts = new Date().toISOString();
-  try {
-    const response = await clipbus.runtime.invoke<GallerySolidImageResponse>({
-      key: GALLERY_RPC_KEYS.createSolidImage,
-      payload: {},
-    });
-    generatedImageUrl.value = response.url;
-    emit("log", {
-      ts,
-      api: `clipbus.runtime.invoke({ key: "${GALLERY_RPC_KEYS.createSolidImage}" })`,
-      result: response,
-    });
-  } catch (err) {
-    emit("log", {
-      ts,
-      api: `clipbus.runtime.invoke({ key: "${GALLERY_RPC_KEYS.createSolidImage}" })`,
-      error: { message: err instanceof Error ? err.message : String(err) },
-    });
+    const swatch = await renderSwatch.call({});
+    swatchUrl.value = ctx.asset.fileUrl(swatch.path);
+    emit("log", { ts: timestamp(), api, result: { ...swatch, url: swatchUrl.value } });
+  } catch (error) {
+    emit("log", { ts: timestamp(), api, error: describeError(error) });
   }
 }
 </script>

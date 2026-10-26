@@ -15,7 +15,7 @@
         </div>
         <pre v-if="entry.args !== undefined" class="log-entry__pre">{{ serialize(entry.args) }}</pre>
         <pre v-if="entry.result !== undefined" class="log-entry__pre log-entry__pre--result">{{ serialize(entry.result) }}</pre>
-        <pre v-if="entry.error" class="log-entry__pre log-entry__pre--error">{{ entry.error.message }}</pre>
+        <pre v-if="entry.error" class="log-entry__pre log-entry__pre--error">{{ describe(entry.error) }}</pre>
       </li>
     </ul>
   </section>
@@ -23,14 +23,7 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-
-interface LogEntry {
-  ts: string;
-  api: string;
-  args?: unknown;
-  result?: unknown;
-  error?: { message: string };
-}
+import type { LogEntry, LogError } from "../log";
 
 const props = withDefaults(defineProps<{
   entries: LogEntry[];
@@ -42,7 +35,12 @@ const props = withDefaults(defineProps<{
 const displayEntries = computed(() => props.entries.slice(0, props.maxEntries));
 
 function serialize(value: unknown): string {
-  return JSON.stringify(value, null, 2);
+  return JSON.stringify(value, null, 2) ?? "undefined";
+}
+
+function describe(error: LogError): string {
+  const head = `${error.name} (${error.source}): ${error.message}`;
+  return error.data === undefined ? head : `${head}\n${serialize(error.data)}`;
 }
 </script>
 
@@ -135,6 +133,6 @@ function serialize(value: unknown): string {
 }
 
 .log-entry__pre--error {
-  color: #dc2626;
+  color: var(--clipbus-danger, #dc2626);
 }
 </style>

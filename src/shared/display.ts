@@ -1,7 +1,7 @@
-// src/shared/display.ts
-// Display utilities shared across features.
-// Canonical home for DisplayFact, DisplayInfo, and build*Display helpers.
-// See: openspec/changes/plugin-sdk-template-opt §3.1
+// Display helpers shared by the runtime (detector, actions) and the card pages.
+// Pure functions over the contract types: no Node and no DOM APIs.
+
+import type { PluginContent, PluginContentImage, PluginItemSnapshot } from "@clipbus/plugin-sdk";
 
 export interface DisplayFact {
   label: string;
@@ -9,259 +9,101 @@ export interface DisplayFact {
 }
 
 export interface DisplayInfo {
+  /** "Text" or "PNG image". */
   typeLabel: string;
+  /** Short size note used in the card title: "3 lines", "1920×1080". */
+  badge: string;
   headline: string;
   subheadline: string;
   facts: DisplayFact[];
 }
 
-/**
- * Decode a raw `unknown` (typically `parsed.display` from a payloadJson) into
- * a strict DisplayInfo. Used by feature payload.ts decoders to share the
- * boundary coercion logic instead of duplicating it.
- *
- * Uses `??` (nullish-coalescing) instead of `||` so falsy-but-valid values
- * (empty string, 0) survive coercion.
- */
-export function decodeDisplayInfo(raw: unknown): DisplayInfo {
-  const display = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
-  const facts = Array.isArray(display.facts) ? display.facts : [];
-  return {
-    typeLabel: String(display.typeLabel ?? ""),
-    headline: String(display.headline ?? ""),
-    subheadline: String(display.subheadline ?? ""),
-    facts: facts.map((fact) => {
-      const f = (fact && typeof fact === "object" ? fact : {}) as Record<string, unknown>;
-      return { label: String(f.label ?? ""), value: String(f.value ?? "") };
-    }),
-  };
+export function normalizeText(value: string): string {
+  return value.replace(/\r\n/g, "\n").trim();
 }
 
-// ---- internal payload shape types (kept local) ----
-
-interface PathEntry {
-  kind?: string;
-  path?: string;
-  displayName?: string;
-}
-
-interface ImagePayload {
-  width?: number;
-  height?: number;
-  format?: string;
-  bytes?: number;
-}
-
-interface PathRefPayload {
-  entries?: unknown[];
-}
-
-interface TextPayload {
-  text?: string;
-}
-
-export type ContentPayload = TextPayload | ImagePayload | PathRefPayload | null;
-
-// ---- text helpers ----
-
-export function normalizeText(value: unknown): string {
-  return String(value ?? "").replace(/\r\n/g, "\n").trim();
-}
-
-export function truncateText(value: unknown, maxLength = 72): string {
+export function truncateText(value: string, maxLength = 72): string {
   const normalized = normalizeText(value);
-  if (!normalized) {
-    return "";
-  }
   if (normalized.length <= maxLength) {
     return normalized;
   }
-  return `${normalized.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
+  let end = Math.max(0, maxLength - 1);
+  // Never keep half of a surrogate pair (an emoji, say): a lone surrogate is not text.
+  if (end > 0 && /[\uD800-\uDBFF]/.test(normalized[end - 1])) {
+    end -= 1;
+  }
+  return `${normalized.slice(0, end).trimEnd()}…`;
 }
 
-export function safeArray(value: unknown): unknown[] {
-  return Array.isArray(value) ? value : [];
-}
-
-export function createFact(label: unknown, value: unknown): DisplayFact {
-  return {
-    label: String(label ?? ""),
-    value: String(value ?? "")
-  };
-}
-
-export function formatByteCount(byteCount: unknown): string {
-  const normalized = Number(byteCount) || 0;
-  if (normalized <= 0) {
+export function formatByteCount(byteCount: number): string {
+  if (!Number.isFinite(byteCount) || byteCount <= 0) {
     return "0 B";
   }
-  if (normalized < 1024) {
-    return `${normalized} B`;
+  if (byteCount < 1024) {
+    return `${byteCount} B`;
   }
-  if (normalized < 1024 * 1024) {
-    return `${(normalized / 1024).toFixed(1)} KB`;
+  if (byteCount < 1024 * 1024) {
+    return `${(byteCount / 1024).toFixed(1)} KB`;
   }
-  return `${(normalized / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(byteCount / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-// ---- search text helper ----
-
-interface PayloadWithDisplay {
-  display?: {
-    headline?: string;
-    subheadline?: string;
-    facts?: Array<{ label?: string; value?: string }>;
+function textDisplay(text: string): DisplayInfo {
+  const normalized = normalizeText(text);
+  const lines = normalized.split("\n").map((line) => line.trim()).filter(Boolean);
+  const lineCount = Math.max(lines.length, 1);
+  return {
+    typeLabel: "Text",
+    badge: lineCount === 1 ? "1 line" : `${lineCount} lines`,
+    headline: truncateText(lines[0] ?? "") || "Empty text",
+    subheadline: truncateText(lines[1] ?? "") || "Single-line text item.",
+    facts: [
+      { label: "Lines", value: String(lineCount) },
+      { label: "Chars", value: String(normalized.length) },
+    ],
   };
 }
 
-export function buildSearchText(payload: PayloadWithDisplay): string {
-  const facts = safeArray(payload?.display?.facts)
-    .map((fact) => `${(fact as { label?: string })?.label ?? ""} ${(fact as { value?: string })?.value ?? ""}`.trim())
-    .filter(Boolean);
-  return [payload?.display?.headline, payload?.display?.subheadline, ...facts]
+function imageDisplay(image: PluginContentImage): DisplayInfo {
+  const format = (image.format || "image").toUpperCase();
+  const size = image.width > 0 && image.height > 0 ? `${image.width}×${image.height}` : "unknown size";
+  return {
+    typeLabel: `${format} image`,
+    badge: size,
+    headline: `${format} image`,
+    subheadline: image.width > 0 && image.height > 0 ? `${image.width} × ${image.height} pixels` : "Image without size metadata.",
+    facts: [
+      { label: "Size", value: size },
+      { label: "Bytes", value: formatByteCount(image.bytes) },
+    ],
+  };
+}
+
+/** How the template shows an item's content; images only carry metadata (spec: pixels via ctx.input.imagePath()). */
+export function buildContentDisplay(content: PluginContent): DisplayInfo {
+  return content.kind === "image" ? imageDisplay(content) : textDisplay(content.text);
+}
+
+/** Content facts plus item facts, for Action output. */
+export function buildItemDisplay(item: PluginItemSnapshot, content: PluginContent): DisplayInfo {
+  const display = buildContentDisplay(content);
+  return {
+    ...display,
+    facts: [
+      ...display.facts,
+      { label: "Tags", value: String(item.tags.length) },
+      { label: "Source", value: item.sourceApp ?? "Unknown" },
+    ],
+  };
+}
+
+/** The text the detector puts into the search extension. */
+export function buildSearchText(display: DisplayInfo): string {
+  return [display.headline, display.subheadline, ...display.facts.map((fact) => `${fact.label} ${fact.value}`)]
     .filter(Boolean)
     .join(" ");
 }
 
-// ---- private display builders ----
-
-function buildTextDisplay(text: unknown): DisplayInfo {
-  const normalized = normalizeText(text);
-  const lines = normalized
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-  const headline = truncateText(lines[0] || "Text clipboard item");
-  const subheadline = truncateText(lines[1] || "Supports text payload inspection and copy-ready debug JSON.");
-
-  return {
-    typeLabel: "Text",
-    headline,
-    subheadline,
-    facts: [
-      createFact("Lines", String(lines.length || 1)),
-      createFact("Chars", String(normalized.length))
-    ]
-  };
-}
-
-function buildImageDisplay(payload: ImagePayload | null): DisplayInfo {
-  const width = Number((payload as ImagePayload | null)?.width) || 0;
-  const height = Number((payload as ImagePayload | null)?.height) || 0;
-  const format = String((payload as ImagePayload | null)?.format || "image").toUpperCase();
-  const byteCount = Number((payload as ImagePayload | null)?.bytes) || 0;
-
-  return {
-    typeLabel: "Image",
-    headline: `${format} image`,
-    subheadline: width > 0 && height > 0
-      ? `${width} × ${height} pixels`
-      : "Supports image payload inspection and copy-ready debug JSON.",
-    facts: [
-      createFact("Size", width > 0 && height > 0 ? `${width}×${height}` : "Unknown"),
-      createFact("Bytes", formatByteCount(byteCount))
-    ]
-  };
-}
-
-function buildPathReferenceDisplay(entries: unknown): DisplayInfo {
-  const normalizedEntries = safeArray(entries) as PathEntry[];
-  const firstEntry = normalizedEntries[0] ?? null;
-  const folderCount = normalizedEntries.filter((entry) => (entry as PathEntry)?.kind === "folder").length;
-  const fileCount = normalizedEntries.filter((entry) => (entry as PathEntry)?.kind === "file").length;
-
-  return {
-    typeLabel: "Path",
-    headline: truncateText((firstEntry as PathEntry)?.displayName || (firstEntry as PathEntry)?.path || "Path reference item"),
-    subheadline: normalizedEntries.length > 1
-      ? `${normalizedEntries.length} entries selected`
-      : "Supports file and folder reference payload inspection.",
-    facts: [
-      createFact("Files", String(fileCount)),
-      createFact("Folders", String(folderCount))
-    ]
-  };
-}
-
-// ---- public API ----
-
-// Two-param signature kept (callers in feature payload.ts files use this).
-// §4 will introduce ContentEnvelope overload when feature migration happens.
-export type CanonicalContentKind = "text" | "image" | "path_reference";
-
-export function buildContentDisplay(contentKind: CanonicalContentKind, payload: ContentPayload): DisplayInfo {
-  if (contentKind === "image") {
-    return buildImageDisplay(payload as ImagePayload | null);
-  }
-  if (contentKind === "path_reference") {
-    return buildPathReferenceDisplay((payload as PathRefPayload | null)?.entries);
-  }
-  return buildTextDisplay((payload as TextPayload | null)?.text);
-}
-
-interface ItemShape {
-  type?: string;
-  sourceAppID?: string;
-  tags?: unknown[];
-}
-
-interface ContentShape {
-  kind?: string;
-  text?: string;
-  width?: number;
-  height?: number;
-  format?: string;
-  bytes?: number;
-  entries?: unknown[];
-}
-
-export function buildItemDisplay(item: unknown, content: unknown): DisplayInfo {
-  const contentShape = (content ?? {}) as ContentShape;
-  const canonicalType = mapContentKind(
-    contentShape.kind ?? (item as ItemShape)?.type
-  );
-
-  const sourceAppID = String((item as ItemShape)?.sourceAppID ?? "");
-  const tags = safeArray((item as ItemShape)?.tags);
-  const baseDisplay = buildContentDisplay(
-    canonicalType,
-    contentShape as ContentPayload
-  );
-
-  return {
-    typeLabel: baseDisplay.typeLabel,
-    headline: baseDisplay.headline,
-    subheadline: baseDisplay.subheadline,
-    facts: [
-      ...baseDisplay.facts.slice(0, 2),
-      createFact("Tags", String(tags.length)),
-      createFact("Source", sourceAppID || "Unknown")
-    ].slice(0, 4)
-  };
-}
-
-export function mapContentKind(kind: unknown): CanonicalContentKind {
-  if (kind === "path_reference") {
-    return "path_reference";
-  }
-  if (kind === "pathReference") {
-    throw new Error("Legacy content kind 'pathReference' is not supported. Use 'path_reference'.");
-  }
-  if (kind === "image") {
-    return "image";
-  }
-  return "text";
-}
-
-export function mapItemType(type: unknown): CanonicalContentKind {
-  if (type === "path_reference") {
-    return "path_reference";
-  }
-  if (type === "pathReference") {
-    throw new Error("Legacy item type 'pathReference' is not supported. Use 'path_reference'.");
-  }
-  if (type === "image") {
-    return "image";
-  }
-  return "text";
+export function formatJSON(value: unknown): string {
+  return JSON.stringify(value ?? null, null, 2);
 }

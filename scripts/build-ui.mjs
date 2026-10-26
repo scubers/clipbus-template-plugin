@@ -1,113 +1,63 @@
+// Build one self-contained card page per manifest renderer.
+//
+// Each renderer's `page` (relative to the plugin root) is the HTML the Host
+// loads; its folder, one per page, receives index.js and index.css next to it.
+// PAGE_SOURCES says which source folder (index.html + main.ts) builds each
+// renderer's page. To add a renderer: declare it in manifest.json and add a
+// line here.
+
 import { build } from "vite";
-import { cp, rm, readdir, stat } from "node:fs/promises";
+import vue from "@vitejs/plugin-vue";
+import { access, copyFile, readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import vue from "@vitejs/plugin-vue";
+import { planPages } from "./ui-pages.mjs";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const projectRoot = path.resolve(__dirname, "..");
-const featuresDir = path.resolve(projectRoot, "src/features");
-const uiOutputRoot = path.resolve(projectRoot, "dist/ui");
+const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-function pascalCase(slug) {
-  return slug.split("-").map(p => p.charAt(0).toUpperCase() + p.slice(1)).join("");
-}
-
-// Capability-gallery sub-features map to first-class manifest IDs that don't
-// follow the simple "template-{featureName}" convention. Keep this map in
-// sync with manifest.json — covered by tests/integration/galleryWiring.test.cjs.
-const NESTED_OVERRIDES = {
-  "capability-gallery/renderer-bounded-ui": { kind: "renderers", name: "gallery-renderer-bounded" },
-  "capability-gallery/renderer-fixed-ui": { kind: "renderers", name: "gallery-renderer-fixed" },
-  "capability-gallery/renderer-auto-ui": { kind: "renderers", name: "gallery-renderer-auto" },
-  "capability-gallery/draft-action-ui": { kind: "actions", name: "gallery-draft" },
+/** Renderer id → page source folder. */
+const PAGE_SOURCES = {
+  "template-renderer": "src/features/preview-renderer",
+  "template-expanded-renderer": "src/features/expanded-renderer",
+  "gallery-renderer-fixed": "src/features/capability-gallery/renderer-fixed-ui",
+  "gallery-renderer-auto": "src/features/capability-gallery/renderer-auto-ui",
+  "gallery-renderer-bounded": "src/features/capability-gallery/renderer-bounded-ui",
 };
 
-async function hasEntryFiles(dir) {
-  try {
-    await stat(path.join(dir, "main.ts"));
-    await stat(path.join(dir, "index.html"));
-    return true;
-  } catch {
-    return false;
-  }
+const manifest = JSON.parse(await readFile(path.join(projectRoot, "manifest.json"), "utf8"));
+const renderers = manifest.renderers ?? [];
+
+function globalName(id) {
+  return `ClipbusPlugin_${id.replace(/[^A-Za-z0-9]/g, "_")}`;
 }
 
-async function discoverPages() {
-  const pages = [];
-  const topLevel = await readdir(featuresDir, { withFileTypes: true });
-  for (const dirent of topLevel) {
-    if (!dirent.isDirectory()) continue;
-    const featureName = dirent.name;
-    const featurePath = path.join(featuresDir, featureName);
+const pages = planPages(renderers, PAGE_SOURCES);
 
-    if (await hasEntryFiles(featurePath)) {
-      // Existing single-feature dir (preview-renderer / expanded-renderer / draft-action).
-      let kind, name;
-      if (featureName.endsWith("-renderer")) {
-        kind = "renderers";
-        name = featureName === "preview-renderer" ? "template-renderer" : `template-${featureName}`;
-      } else {
-        kind = "actions";
-        name = `template-${featureName}`;
-      }
-      const globalName = `ClipbusTemplatePlugin${pascalCase(featureName)}`;
-      pages.push({
-        name,
-        kind,
-        globalName,
-        entry: path.join(featurePath, "main.ts"),
-        template: path.join(featurePath, "index.html"),
-      });
-      continue;
-    }
+for (const { id, page, source } of pages) {
+  const sourceDir = path.join(projectRoot, source);
+  const entry = path.join(sourceDir, "main.ts");
+  const template = path.join(sourceDir, "index.html");
+  await Promise.all([access(entry), access(template)]);
 
-    // Nested layout — each subdirectory with main.ts + index.html is its own UI bundle.
-    const sublevel = await readdir(featurePath, { withFileTypes: true });
-    for (const subDirent of sublevel) {
-      if (!subDirent.isDirectory()) continue;
-      const subPath = path.join(featurePath, subDirent.name);
-      if (!(await hasEntryFiles(subPath))) continue;
-      const key = `${featureName}/${subDirent.name}`;
-      const override = NESTED_OVERRIDES[key];
-      if (!override) {
-        throw new Error(`Nested UI entry ${key} has no NESTED_OVERRIDES mapping in build-ui.mjs`);
-      }
-      const globalName = `ClipbusTemplatePlugin${pascalCase(featureName)}${pascalCase(subDirent.name)}`;
-      pages.push({
-        name: override.name,
-        kind: override.kind,
-        globalName,
-        entry: path.join(subPath, "main.ts"),
-        template: path.join(subPath, "index.html"),
-      });
-    }
-  }
-  return pages;
-}
-
-const pages = await discoverPages();
-
-await rm(uiOutputRoot, { recursive: true, force: true });
-
-for (const page of pages) {
-  const outDir = path.resolve(uiOutputRoot, page.kind, page.name);
+  const outDir = path.dirname(path.join(projectRoot, page));
+  await rm(outDir, { recursive: true, force: true });
   await build({
     root: projectRoot,
     configFile: false,
+    logLevel: "warn",
     define: { "process.env.NODE_ENV": JSON.stringify("production") },
     plugins: [vue()],
     build: {
-      lib: { entry: page.entry, name: page.globalName, formats: ["iife"], fileName: () => "index.js", cssFileName: "index" },
+      lib: { entry, name: globalName(id), formats: ["iife"], fileName: () => "index.js", cssFileName: "index" },
       outDir,
       emptyOutDir: true,
       cssCodeSplit: false,
       assetsDir: ".",
       rollupOptions: {
-        output: { assetFileNames: (asset) => asset.name?.endsWith(".css") ? "index.css" : "[name][extname]" }
-      }
-    }
+        output: { assetFileNames: (asset) => (asset.name?.endsWith(".css") ? "index.css" : "[name][extname]") },
+      },
+    },
   });
-  await cp(page.template, path.resolve(outDir, "index.html"));
+  await copyFile(template, path.join(projectRoot, page));
+  console.log(`[build-ui] ${id} → ${page}`);
 }

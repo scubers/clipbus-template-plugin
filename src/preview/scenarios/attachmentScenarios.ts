@@ -1,318 +1,148 @@
-import type { PreviewScenario } from '@clipbus/plugin-sdk/preview';
+// Preview workbench scenarios: one card each, the way a Host would open it.
+//
+// Card defaults (title, tint, buttons, height range) come from manifest.json
+// and payloads from the same builders the detectors use, so the preview
+// cannot drift from what the plugin ships. `messages` stand in for the
+// plugin runtime: the workbench has no Node process.
 
-const PLUGIN_ID = 'plugin.template.full';
-const BASE_ITEM_TAGS = ['template-plugin'];
-const BASE_SOURCE_APP = 'com.preview.editor';
+import type { PreviewScenario } from "@clipbus/plugin-sdk/preview";
+import type {
+  AttachmentContract,
+  PluginAttachment,
+  PluginCard,
+  PluginContent,
+  PluginItemSnapshot,
+  PluginManifest,
+} from "@clipbus/plugin-sdk";
+import manifestJson from "../../../manifest.json";
+import {
+  failOnPurpose,
+  GALLERY_ERROR_NAME,
+  galleryCards,
+  renderSwatch,
+  runtimeProbe,
+  type GalleryCardPayload,
+  type GalleryShape,
+  type RuntimeProbeResult,
+  type SwatchResult,
+} from "../../features/capability-gallery/contracts";
+import { analyzeText } from "../../features/expanded-renderer/analysis";
+import { analyzeItem, type ItemAnalysis } from "../../features/expanded-renderer/messages";
+import { createExpandedPayload, EXPANDED_KEY, expandedAttachment } from "../../features/expanded-renderer/payload";
+import { createPreviewPayload, PREVIEW_KEY, previewAttachment, previewCardTitle } from "../../features/preview-renderer/payload";
 
-const DEFAULT_BUTTONS = [
-  { id: 'copy-payload-json', title: 'Copy Payload', isEnabled: true },
-  { id: 'copy-renderer-context', title: 'Copy Context', isEnabled: true },
-];
+const manifest = manifestJson as PluginManifest;
+const PLUGIN = { id: manifest.plugin.id, version: manifest.plugin.version };
+const COPIED_AT = Date.UTC(2026, 9, 25, 9, 30);
+const FAKE_SHA256 = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
 
-export const attachmentScenarios: PreviewScenario[] = [
-  {
-    id: 'short-text',
-    label: 'Short Text',
-    mode: 'attachmentRenderer',
-    pluginID: PLUGIN_ID,
-    accentHex: '#0f766e',
-    view: 'compact',
-    viewport: { heightPolicy: 'fixed', height: 320 },
-    item: {
-      id: 'item-short-text',
-      type: 'text',
-      tags: BASE_ITEM_TAGS,
-      sourceAppID: BASE_SOURCE_APP,
-    },
-    attachment: {
-      item: {
-        id: 'item-short-text',
-        type: 'text',
-        tags: BASE_ITEM_TAGS,
-        sourceAppID: BASE_SOURCE_APP,
-      },
-      attachment: {
-        historyID: 'preview-short-text',
-        owner: PLUGIN_ID,
-        attachmentType: 'plugin.template.full.preview',
-        attachmentKey: 'preview-short-text',
-        payloadJson: JSON.stringify({
-          kind: 'template_preview',
-          version: 2,
-          contentKind: 'text',
-          display: {
-            typeLabel: 'Text',
-            headline: 'Template plugin preview',
-            subheadline: 'Supports compact payload inspection inside a fixed-height renderer.',
-            facts: [
-              { label: 'Lines', value: '2' },
-              { label: 'Chars', value: '68' },
-              { label: 'Source', value: 'Preview.app' },
-            ],
-          },
-        }),
-      },
-    },
-    buttons: DEFAULT_BUTTONS,
+const SHORT_TEXT = "Template plugin preview\nA fixed-height card that shows what the detector stored.";
+const LONG_TITLE_TEXT = "static func configure(_ webView: WKWebView, bridge: PluginBridge, theme: PluginTheme) -> Bool {\n  return true\n}";
+const JSON_TEXT = '{\n  "name": "clipbus",\n  "kind": "template",\n  "tags": ["json", "preview"]\n}';
+const ARTICLE_TEXT = [
+  "Clipbus plugins run detectors after every copy, show cards next to the item and offer Actions.",
+  "A card page talks to the Host through ctx; heavy work goes to the plugin runtime through typed messages.",
+  "This expanded card grows with its content: toggle Debug or run Analyze and watch the height follow.",
+].join("\n");
+const IMAGE: PluginContent = { kind: "image", width: 1920, height: 1080, format: "png", bytes: 245_760 };
+
+function cardDefaults(contract: { readonly type: string }): Pick<PreviewScenario, "renderer" | "height"> {
+  const renderer = manifest.renderers?.find((candidate) => candidate.attachmentType === contract.type);
+  if (renderer === undefined) {
+    throw new Error(`manifest.json has no renderer for ${contract.type}`);
+  }
+  return { renderer: { title: renderer.title, tint: renderer.tint, buttons: renderer.buttons }, height: renderer.height };
+}
+
+function attachment<T>(contract: AttachmentContract<T>, key: string, payload: T, card?: PluginCard): PluginAttachment<T> {
+  return { type: contract.type, key, updatedAt: COPIED_AT, own: true, payload, ...(card === undefined ? {} : { card }) };
+}
+
+function itemFor(id: string, content: PluginContent, shown: PluginAttachment<unknown>, tags: string[] = ["template-plugin"]): PluginItemSnapshot {
+  return {
+    id,
+    kind: content.kind,
+    tags,
+    pinned: false,
+    sourceApp: "com.preview.editor",
+    createdAt: COPIED_AT,
+    lastCopiedAt: COPIED_AT,
+    attachments: [{ type: shown.type, key: shown.key, updatedAt: shown.updatedAt, own: shown.own }],
+  };
+}
+
+function previewScenario(id: string, label: string, content: PluginContent, tags?: string[]): PreviewScenario {
+  const payload = createPreviewPayload(content, FAKE_SHA256);
+  const shown = attachment(previewAttachment, PREVIEW_KEY, payload, { title: previewCardTitle(payload) });
+  return { id, label, plugin: PLUGIN, item: itemFor(`item-${id}`, content, shown, tags), content, attachment: shown, ...cardDefaults(previewAttachment) };
+}
+
+function analyzeStub(content: PluginContent): ItemAnalysis {
+  return content.kind === "text" ? analyzeText(content.text) : { contentKind: "image", fileBytes: content.bytes, sha256: FAKE_SHA256 };
+}
+
+function expandedScenario(id: string, label: string, content: PluginContent): PreviewScenario {
+  const shown = attachment(expandedAttachment, EXPANDED_KEY, createExpandedPayload(content));
+  return {
+    id,
+    label,
+    plugin: PLUGIN,
+    item: itemFor(`item-${id}`, content, shown, ["template-plugin", "expanded-demo"]),
+    content,
+    attachment: shown,
+    ...cardDefaults(expandedAttachment),
+    messages: { [analyzeItem.name]: () => analyzeStub(content) },
+  };
+}
+
+class GalleryDemoError extends Error {
+  constructor(reason: string) {
+    super(`Failed on purpose: ${reason}`);
+    this.name = GALLERY_ERROR_NAME;
+  }
+}
+
+const galleryMessages: PreviewScenario["messages"] = {
+  [runtimeProbe.name]: (data): RuntimeProbeResult => ({
+    probe: (data as { probe: RuntimeProbeResult["probe"] }).probe,
+    result: "Answered by the preview stub; install the plugin in Clipbus to run the real runtime.",
+  }),
+  [renderSwatch.name]: (data): SwatchResult => {
+    const color = (data as { color?: string } | null)?.color ?? "#f97316";
+    const path = `cache/swatches/${color.slice(1)}.png`;
+    return { color, path, absolutePath: `/preview/plugin-data/${path}` };
   },
-  {
-    id: 'long-title',
-    label: 'Long Title',
-    mode: 'attachmentRenderer',
-    pluginID: PLUGIN_ID,
-    accentHex: '#0f766e',
-    view: 'compact',
-    viewport: { heightPolicy: 'fixed', height: 320 },
-    item: {
-      id: 'item-long-title',
-      type: 'text',
-      tags: BASE_ITEM_TAGS,
-      sourceAppID: BASE_SOURCE_APP,
-    },
-    attachment: {
-      item: {
-        id: 'item-long-title',
-        type: 'text',
-        tags: BASE_ITEM_TAGS,
-        sourceAppID: BASE_SOURCE_APP,
-      },
-      attachment: {
-        historyID: 'preview-long-title',
-        owner: PLUGIN_ID,
-        attachmentType: 'plugin.template.full.preview',
-        attachmentKey: 'preview-long-title',
-        payloadJson: JSON.stringify({
-          kind: 'template_preview',
-          version: 2,
-          contentKind: 'text',
-          display: {
-            typeLabel: 'Text',
-            headline: 'static func configure(_ webView: WKWebView) {',
-            subheadline: 'Stress-case for truncation, fixed facts, and stable action-strip ownership.',
-            facts: [
-              { label: 'Lines', value: '1' },
-              { label: 'Chars', value: '45' },
-              { label: 'Scope', value: 'Swift snippet' },
-            ],
-          },
-        }),
-      },
-    },
-    buttons: DEFAULT_BUTTONS,
+  [failOnPurpose.name]: (data) => {
+    throw new GalleryDemoError((data as { reason: string }).reason);
   },
-  {
-    id: 'path-reference',
-    label: 'Path Reference',
-    mode: 'attachmentRenderer',
-    pluginID: PLUGIN_ID,
-    accentHex: '#0f766e',
-    view: 'compact',
-    viewport: { heightPolicy: 'fixed', height: 320 },
-    item: {
-      id: 'item-path-reference',
-      type: 'text',
-      tags: BASE_ITEM_TAGS,
-      sourceAppID: BASE_SOURCE_APP,
-    },
-    attachment: {
-      item: {
-        id: 'item-path-reference',
-        type: 'text',
-        tags: BASE_ITEM_TAGS,
-        sourceAppID: BASE_SOURCE_APP,
-      },
-      attachment: {
-        historyID: 'preview-path-reference',
-        owner: PLUGIN_ID,
-        attachmentType: 'plugin.template.full.preview',
-        attachmentKey: 'preview-path-reference',
-        payloadJson: JSON.stringify({
-          kind: 'template_preview',
-          version: 2,
-          contentKind: 'text',
-          display: {
-            typeLabel: 'Path',
-            headline: 'Quarterly Assets Bundle',
-            subheadline: 'Path reference payloads should still read clearly without requiring preview scrolling.',
-            facts: [
-              { label: 'Entries', value: '4' },
-              { label: 'Folder', value: '/Users/demo/Desktop' },
-              { label: 'Source', value: 'Finder' },
-            ],
-          },
-        }),
-      },
-    },
-    buttons: DEFAULT_BUTTONS,
-  },
-  {
-    id: 'expanded-preview',
-    label: 'Expanded (Dynamic Height)',
-    mode: 'attachmentRenderer',
-    pluginID: PLUGIN_ID,
-    accentHex: '#2563eb',
-    view: 'expanded',
-    viewport: { heightPolicy: 'auto' },
-    item: {
-      id: 'item-expanded-preview',
-      type: 'text',
-      tags: BASE_ITEM_TAGS,
-      sourceAppID: BASE_SOURCE_APP,
-    },
-    attachment: {
-      item: {
-        id: 'item-expanded-preview',
-        type: 'text',
-        tags: BASE_ITEM_TAGS,
-        sourceAppID: BASE_SOURCE_APP,
-      },
-      attachment: {
-        historyID: 'preview-expanded-preview',
-        owner: PLUGIN_ID,
-        attachmentType: 'plugin.template.full.expanded',
-        attachmentKey: 'preview-expanded-preview',
-        payloadJson: JSON.stringify({
-          kind: 'template_expanded',
-          version: 2,
-          contentKind: 'text',
-          display: {
-            typeLabel: 'Text',
-            headline: 'Template expanded preview',
-            subheadline: 'Toggle Debug below to see clipbus.window.autoFit drive clipbus.window.setHeight as content grows.',
-            facts: [
-              { label: 'Lines', value: '3' },
-              { label: 'Chars', value: '118' },
-              { label: 'Source', value: 'Preview.app' },
-              { label: 'Tags', value: '1' },
-            ],
-          },
-          extended: {
-            contentKind: 'text',
-            sourceAppID: BASE_SOURCE_APP,
-            tags: ['template-plugin', 'expanded-demo'],
-            text: 'Template expanded preview\nDemonstrates the {min,max} height policy together with bridge.theme.onChange().',
-          },
-        }),
-      },
-    },
-    buttons: [
-      { id: 'toggle-debug', title: 'Toggle Debug', isEnabled: true },
-      { id: 'copy-debug-json', title: 'Copy Debug', isEnabled: true },
-    ],
-  },
-  {
-    id: 'gallery-fixed-240',
-    label: 'Gallery Fixed 240',
-    mode: 'attachmentRenderer',
-    pluginID: PLUGIN_ID,
-    view: 'gallery-fixed',
-    viewport: { heightPolicy: 'fixed', height: 240 },
-    item: {
-      id: 'item-gallery-fixed',
-      type: 'text',
-      tags: BASE_ITEM_TAGS,
-      sourceAppID: BASE_SOURCE_APP,
-    },
-    attachment: {
-      item: {
-        id: 'item-gallery-fixed',
-        type: 'text',
-        tags: BASE_ITEM_TAGS,
-        sourceAppID: BASE_SOURCE_APP,
-      },
-      attachment: {
-        historyID: 'gallery-fixed',
-        owner: PLUGIN_ID,
-        attachmentType: 'plugin.template.full.gallery.fixed',
-        attachmentKey: 'gallery-fixed',
-        payloadJson: JSON.stringify({
-          kind: 'fixed',
-          title: 'Gallery Fixed 240px',
-          inputKindSeen: 'text',
-          capabilityCount: 3,
-          capabilitiesShown: ['theme', 'attachment', 'buttons'],
-        }),
-      },
-    },
-    buttons: [
-      { id: 'ping-fixed', title: 'Ping', isEnabled: true },
-    ],
-  },
-  {
-    id: 'gallery-auto',
-    label: 'Gallery Auto Height',
-    mode: 'attachmentRenderer',
-    pluginID: PLUGIN_ID,
-    view: 'gallery-auto',
-    viewport: { heightPolicy: 'auto' },
-    item: {
-      id: 'item-gallery-auto',
-      type: 'text',
-      tags: BASE_ITEM_TAGS,
-      sourceAppID: BASE_SOURCE_APP,
-    },
-    attachment: {
-      item: {
-        id: 'item-gallery-auto',
-        type: 'text',
-        tags: BASE_ITEM_TAGS,
-        sourceAppID: BASE_SOURCE_APP,
-      },
-      attachment: {
-        historyID: 'gallery-auto',
-        owner: PLUGIN_ID,
-        attachmentType: 'plugin.template.full.gallery.auto',
-        attachmentKey: 'gallery-auto',
-        payloadJson: JSON.stringify({
-          kind: 'auto',
-          title: 'Gallery Auto Height',
-          inputKindSeen: 'text',
-          capabilityCount: 2,
-          capabilitiesShown: ['item', 'plugin-context'],
-        }),
-      },
-    },
-    buttons: [],
-  },
-  {
-    id: 'gallery-bounded',
-    label: 'Gallery Bounded 120-480',
-    mode: 'attachmentRenderer',
-    pluginID: PLUGIN_ID,
-    view: 'gallery-bounded',
-    viewport: { heightPolicy: 'bounded', min: 120, max: 480 },
-    item: {
-      id: 'item-gallery-bounded',
-      type: 'text',
-      tags: BASE_ITEM_TAGS,
-      sourceAppID: BASE_SOURCE_APP,
-    },
-    attachment: {
-      item: {
-        id: 'item-gallery-bounded',
-        type: 'text',
-        tags: BASE_ITEM_TAGS,
-        sourceAppID: BASE_SOURCE_APP,
-      },
-      attachment: {
-        historyID: 'gallery-bounded',
-        owner: PLUGIN_ID,
-        attachmentType: 'plugin.template.full.gallery.bounded',
-        attachmentKey: 'gallery-bounded',
-        payloadJson: JSON.stringify({
-          kind: 'bounded',
-          title: 'Gallery Bounded 120-480',
-          inputKindSeen: 'text',
-          capabilityCount: 5,
-          capabilitiesShown: ['theme', 'attachment', 'buttons', 'runtime', 'clipboard'],
-        }),
-      },
-    },
-    buttons: [
-      { id: 'expand', title: 'Expand', isEnabled: true },
-      { id: 'compact', title: 'Compact', isEnabled: true },
-      { id: 'reset-height', title: 'Reset Height', isEnabled: true },
-      { id: 'autofit-toggle', title: 'AutoFit: OFF', isEnabled: true },
-    ],
-  },
+};
+
+function galleryScenario(shape: GalleryShape, label: string): PreviewScenario {
+  const content: PluginContent = { kind: "text", text: SHORT_TEXT };
+  const contract = galleryCards[shape];
+  const payload: GalleryCardPayload = { shape, inputKind: content.kind, highlights: [`${shape} preview scenario`] };
+  const shown = attachment(contract, shape, payload);
+  return {
+    id: `gallery-${shape}`,
+    label,
+    plugin: PLUGIN,
+    item: itemFor(`item-gallery-${shape}`, content, shown),
+    content,
+    attachment: shown,
+    ...cardDefaults(contract),
+    messages: galleryMessages,
+    settings: { greeting: "Settings come from the user's external settings file" },
+  };
+}
+
+export const previewScenarios: PreviewScenario[] = [
+  previewScenario("short-text", "Preview · short text", { kind: "text", text: SHORT_TEXT }),
+  previewScenario("long-title", "Preview · long title", { kind: "text", text: LONG_TITLE_TEXT }),
+  previewScenario("json", "Preview · JSON (tagged)", { kind: "text", text: JSON_TEXT }, ["template-plugin", "json"]),
+  previewScenario("image", "Preview · image", IMAGE),
+  expandedScenario("expanded-text", "Expanded · text", { kind: "text", text: ARTICLE_TEXT }),
+  expandedScenario("expanded-image", "Expanded · image", IMAGE),
+  galleryScenario("fixed", "Gallery · fixed 240"),
+  galleryScenario("auto", "Gallery · auto height"),
+  galleryScenario("bounded", "Gallery · bounded 120–480"),
 ];

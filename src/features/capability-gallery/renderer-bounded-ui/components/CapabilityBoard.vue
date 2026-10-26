@@ -20,11 +20,7 @@
           @click="onInvoke(button)"
         >
           <span class="capability-board__btn-label">{{ button.label }}</span>
-          <code class="capability-board__btn-sig">{{ button.apiSignature }}</code>
-          <span
-            v-if="button.permissionRequired"
-            class="capability-board__permission"
-          >{{ button.permissionRequired }}</span>
+          <code class="capability-board__btn-sig">{{ button.signature }}</code>
         </button>
       </div>
     </details>
@@ -140,16 +136,5 @@ defineProps<{
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 200px;
-}
-
-.capability-board__permission {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  padding: 1px 5px;
-  border-radius: 999px;
-  background: var(--clipbus-accent, #2563EB);
-  color: var(--clipbus-accent-contrast, #ffffff);
 }
 </style>

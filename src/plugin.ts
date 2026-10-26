@@ -1,71 +1,27 @@
-import { definePlugin } from "@clipbus/plugin-sdk/runtime";
-import type { PluginDetectorHandler, PluginDetectorInput, PluginDetectorArtifact } from "@clipbus/plugin-sdk/runtime";
-import { buildPreviewArtifact } from "./features/preview-renderer/detector";
-import { createTemplatePreviewRenderer } from "./features/preview-renderer/renderer";
-import { buildExpandedArtifact } from "./features/expanded-renderer/detector";
-import { createTemplateExpandedRenderer } from "./features/expanded-renderer/renderer";
-import {
-  createTemplateAutoAction,
-  createTemplateAutoActionTextOnly,
-  createTemplateAutoActionImageOnly,
-} from "./features/auto-action/action";
-import { createGalleryDetector } from "./features/capability-gallery/runtime/detector";
-import {
-  createGalleryRendererFixed,
-  createGalleryRendererAuto,
-  createGalleryRendererBounded,
-} from "./features/capability-gallery/runtime/renderers";
-import {
-  createAutoActionText,
-  createAutoActionImage,
-  createAutoActionNone,
-  createAutoActionPathReference,
-} from "./features/capability-gallery/runtime/auto-actions";
-import { createGalleryDraftAction, createGalleryMessageHandlers } from "./features/capability-gallery/runtime/draft-action";
+// The plugin runtime: the Node module the Host's bridge loads (`runtime.nodeEntry`).
+// Detector and Action keys must equal the manifest ids; messages need no
+// manifest entry. Card pages have no runtime registration.
 
-function createCompositeDetector(): PluginDetectorHandler {
-  return {
-    async detect(input: PluginDetectorInput): Promise<PluginDetectorArtifact[]> {
-      const out: PluginDetectorArtifact[] = [];
-      // content is typed as unknown in DetectorInput (the catalog uses t.json() for
-      // content fields). Cast to the concrete shape the payload builders expect.
-      const typedInput = input as Parameters<typeof buildPreviewArtifact>[0];
-      const a = buildPreviewArtifact(typedInput);
-      if (a) out.push(a);
-      const b = buildExpandedArtifact(typedInput);
-      if (b) out.push(b);
-      return out;
-    },
-  };
-}
+import { definePlugin } from "@clipbus/plugin-sdk/runtime";
+import { describeImageInput, describeInput, describeTextInput } from "./features/auto-action/action";
+import { galleryImageAction, galleryNoneAction, galleryTextAction } from "./features/capability-gallery/runtime/actions";
+import { detectGallery } from "./features/capability-gallery/runtime/detector";
+import { galleryMessages } from "./features/capability-gallery/runtime/messages";
+import { handleAnalyzeItem } from "./features/expanded-renderer/analyze";
+import { detectTemplate } from "./features/template-detector/detector";
 
 export default definePlugin({
-  setup() {
-    return {
-      attachmentRenderers: {
-        "template-renderer": createTemplatePreviewRenderer(),
-        "template-expanded-renderer": createTemplateExpandedRenderer(),
-        "gallery-renderer-fixed": createGalleryRendererFixed(),
-        "gallery-renderer-auto": createGalleryRendererAuto(),
-        "gallery-renderer-bounded": createGalleryRendererBounded(),
-      },
-      detectors: {
-        "template-detector": createCompositeDetector(),
-        "gallery-detector": createGalleryDetector(),
-      },
-      actions: {
-        "template-auto-action": createTemplateAutoAction(),
-        "template-auto-action-text": createTemplateAutoActionTextOnly(),
-        "template-auto-action-image": createTemplateAutoActionImageOnly(),
-        "gallery-auto-text": createAutoActionText(),
-        "gallery-auto-image": createAutoActionImage(),
-        "gallery-auto-none": createAutoActionNone(),
-        "gallery-auto-path-reference": createAutoActionPathReference(),
-        "gallery-draft": createGalleryDraftAction(),
-      },
-      messageHandlers: {
-        ...createGalleryMessageHandlers(),
-      },
-    };
+  detectors: {
+    "template-detector": detectTemplate,
+    "gallery-detector": detectGallery,
   },
+  actions: {
+    "template-auto-action": describeInput,
+    "template-auto-action-text": describeTextInput,
+    "template-auto-action-image": describeImageInput,
+    "gallery-auto-text": galleryTextAction,
+    "gallery-auto-image": galleryImageAction,
+    "gallery-auto-none": galleryNoneAction,
+  },
+  messages: [handleAnalyzeItem, ...galleryMessages],
 });

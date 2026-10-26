@@ -1,71 +1,41 @@
 <template>
   <section class="text-input-probe">
-    <p class="text-input-probe__title">Text Input Probe</p>
+    <p class="text-input-probe__title">Text input</p>
     <label class="text-input-probe__label" for="probe-input">
-      Focus / blur this input to signal text-input state to the host:
+      reportInputState() from <code>@clipbus/plugin-sdk/dom</code> (installed in main.ts) tells the Host when a
+      text field has focus or an input method is composing, so Host shortcuts give way while you type.
     </label>
     <input
       id="probe-input"
       v-model="inputValue"
       class="text-input-probe__input"
       type="text"
-      placeholder="Type here to test focus signaling"
-      @focus="handleFocus"
-      @blur="handleBlur"
-      @compositionstart="handleCompositionStart"
-      @compositionend="handleCompositionEnd"
+      placeholder="Type here; the badges show what the helper reports"
+      @focus="focused = true"
+      @blur="onBlur"
+      @compositionstart="composing = true"
+      @compositionend="composing = false"
     />
     <div class="text-input-probe__status">
       <span
         class="text-input-probe__badge"
-        :class="isFocused ? 'text-input-probe__badge--focused' : 'text-input-probe__badge--blurred'"
-      >{{ isFocused ? "focused" : "blurred" }}</span>
-      <span v-if="isComposing" class="text-input-probe__badge text-input-probe__badge--composing">composing</span>
+        :class="focused ? 'text-input-probe__badge--focused' : 'text-input-probe__badge--blurred'"
+      >{{ focused ? "focused" : "blurred" }}</span>
+      <span v-if="composing" class="text-input-probe__badge text-input-probe__badge--composing">composing</span>
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
 import { ref } from "vue";
-import { clipbus } from "@clipbus/plugin-sdk/ui";
 
-const emit = defineEmits<{
-  log: [payload: { ts: string; api: string; args: unknown }];
-}>();
+const inputValue = ref("");
+const focused = ref(false);
+const composing = ref(false);
 
-const inputValue = ref<string>("");
-const isFocused = ref<boolean>(false);
-const isComposing = ref<boolean>(false);
-
-async function signal(state: { isFocused: boolean; isComposing: boolean }): Promise<void> {
-  const ts = new Date().toISOString();
-  await clipbus.textInput.stateChanged(state);
-  emit("log", {
-    ts,
-    api: "clipbus.textInput.stateChanged({ isFocused, isComposing })",
-    args: state,
-  });
-}
-
-async function handleFocus(): Promise<void> {
-  isFocused.value = true;
-  await signal({ isFocused: true, isComposing: isComposing.value });
-}
-
-async function handleBlur(): Promise<void> {
-  isFocused.value = false;
-  isComposing.value = false;
-  await signal({ isFocused: false, isComposing: false });
-}
-
-async function handleCompositionStart(): Promise<void> {
-  isComposing.value = true;
-  await signal({ isFocused: isFocused.value, isComposing: true });
-}
-
-async function handleCompositionEnd(): Promise<void> {
-  isComposing.value = false;
-  await signal({ isFocused: isFocused.value, isComposing: false });
+function onBlur(): void {
+  focused.value = false;
+  composing.value = false;
 }
 </script>
 
@@ -93,6 +63,11 @@ async function handleCompositionEnd(): Promise<void> {
   font-size: 11px;
   color: var(--clipbus-text-secondary, #475569);
   line-height: 1.4;
+}
+
+.text-input-probe__label code {
+  font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+  font-size: 10px;
 }
 
 .text-input-probe__input {

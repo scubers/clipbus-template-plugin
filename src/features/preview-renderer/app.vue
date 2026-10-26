@@ -23,80 +23,45 @@
       </dl>
 
       <p class="preview-panel__hint">
-        {{ searchHint }}
+        {{ tagsHint }} Use the card buttons to copy the payload or the card context.
       </p>
     </section>
 
     <div v-else class="empty-state">
-      <p class="empty-state__title">Waiting for attachment preview</p>
-      <p class="empty-state__body">Open the renderer from a detected attachment to inspect the live session.</p>
+      <p class="empty-state__title">No preview payload</p>
+      <p class="empty-state__body">This attachment does not carry a template preview payload.</p>
     </div>
   </main>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from "vue";
-import { clipbus } from "@clipbus/plugin-sdk/ui";
-import { useTopicRef } from "../../shared/composables/useTopicRef";
-import { decodeTemplatePreviewPayload } from "./payload";
-import type { TemplatePreviewPayload } from "./payload";
-import type { PluginAttachmentPayload } from "@clipbus/plugin-sdk/ui";
+import { computed } from "vue";
+import { ctx } from "@clipbus/plugin-sdk/view";
+import { useCard, useCardButton } from "../../shared/composables/useCard";
+import { formatJSON, type DisplayFact } from "../../shared/display";
+import { isPreviewPayload, previewAttachment } from "./payload";
 
-interface DisplayFact {
-  label: string;
-  value: string;
-}
+// The startup snapshot, kept current by item.changed / env.changed.
+const { item, attachment } = useCard(previewAttachment);
 
-const attachmentPayload = useTopicRef(clipbus.item.attachment);
-const item = useTopicRef(clipbus.item);
+const payload = computed(() => (isPreviewPayload(attachment.value.payload) ? attachment.value.payload : null));
 
-const payload = computed<TemplatePreviewPayload | null>(() =>
-  decodeTemplatePreviewPayload((attachmentPayload.value as PluginAttachmentPayload | undefined)?.attachment?.payloadJson)
+const visibleFacts = computed<DisplayFact[]>(() => {
+  if (payload.value === null) {
+    return [];
+  }
+  const digest = payload.value.sha256 ? `${payload.value.sha256.slice(0, 16)}…` : "not available";
+  return [...payload.value.display.facts.slice(0, 2), { label: "SHA-256", value: digest }];
+});
+
+// Tags are live: they come from the item snapshot, not from the payload.
+const tagsHint = computed(() => (item.value.tags.length > 0 ? `Tags: ${item.value.tags.join(", ")}.` : "No tags."));
+
+// The buttons come from the manifest renderer (`buttons`); the Host draws them.
+useCardButton("copy-payload", () => ctx.system.copyText({ text: formatJSON(attachment.value.payload) }));
+useCardButton("copy-context", () =>
+  ctx.system.copyText({ text: formatJSON({ item: item.value, attachment: attachment.value }) }),
 );
-
-const visibleFacts = computed<DisplayFact[]>(() => Array.isArray(payload.value?.display?.facts)
-  ? payload.value.display.facts.slice(0, 3)
-  : []);
-
-// clipbus.item.search topic was removed in plugin-api-shrink; the renderer no
-// longer receives search terms (Node detectors do the filtering instead).
-const searchHint = computed<string>(() => "Use the host action strip below for copy operations.");
-
-let unsubHostInvoke: (() => void) | null = null;
-
-onMounted(async () => {
-  try {
-    await clipbus.attachmentRenderer.setButtons({ buttons: [
-      { id: "copy-payload-json", title: "Copy Payload JSON" },
-      { id: "copy-renderer-context", title: "Copy Renderer Context" },
-    ]});
-  } catch {
-    // Context guard rejection (running outside an attachment WebView)
-    // is benign — skip button seeding and still register the listener so
-    // the rest of the page works in mixed-context preview scenarios.
-  }
-
-  unsubHostInvoke = clipbus.attachmentRenderer.onHostInvoke.on(async (detail) => {
-    const buttonID = detail?.buttonID;
-    if (buttonID === "copy-payload-json") {
-      const text = JSON.stringify(payload.value ?? attachmentPayload.value, null, 2);
-      await clipbus.clipboard.copyText({ text });
-    } else if (buttonID === "copy-renderer-context") {
-      const ctx = {
-        item: item.value,
-        attachment: attachmentPayload.value,
-      };
-      await clipbus.clipboard.copyText({ text: JSON.stringify(ctx, null, 2) });
-    }
-  });
-});
-
-onUnmounted(() => {
-  if (typeof unsubHostInvoke === "function") {
-    unsubHostInvoke();
-    unsubHostInvoke = null;
-  }
-});
 </script>
 
 <style scoped>

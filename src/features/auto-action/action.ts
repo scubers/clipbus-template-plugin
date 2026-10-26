@@ -1,119 +1,52 @@
-// src/features/auto-action/action.ts
-// Auto-run action variants for the template plugin.
-// Migrated from src/runtime/actions/templateAutoAction.ts (§4d).
+// The template Actions. An Action receives `{ item, content }`: `item` is the
+// item the Flow started from and stays the same through the Flow; `content` is
+// the current cascaded value (text or image). It returns a result built with
+// `result.text / image / none`; a text or image result can continue the Flow.
 
-import { actionResult } from "@clipbus/plugin-sdk/runtime";
-import type {
-  PluginAutoRunActionHandler,
-  PluginAutoRunActionInput,
-  PluginActionOperationResult,
-  PluginActionResolveResult,
-} from "@clipbus/plugin-sdk/runtime";
+import { stat } from "node:fs/promises";
+import { result, type ActionHandler } from "@clipbus/plugin-sdk/runtime";
+import type { PluginContent, PluginItemSnapshot } from "@clipbus/plugin-sdk";
+import { buildItemDisplay, formatByteCount, formatJSON, truncateText } from "../../shared/display";
 
-// Template auto-run actions have no draft UI. After plugin-api-shrink (R13
-// strict handler), PluginAutoRunActionHandler requires both methods; provide
-// a minimal resolveSession stub the host never reads for auto-run lifecycle.
-const autoRunResolveSessionStub = async (): Promise<PluginActionResolveResult> => ({
-  buttons: [],
-  initialDraft: {},
-});
-import {
-  buildActionExecutionSnapshot,
-  formatTemplateDebugJSON
-} from "../../shared/debug.ts";
-import { buildItemDisplay } from "../../shared/display.ts";
+/** The input as JSON, with long text shortened so the result stays readable. */
+function inputSnapshot(item: PluginItemSnapshot, content: PluginContent): unknown {
+  return {
+    item,
+    content: content.kind === "text" ? { kind: "text", text: truncateText(content.text, 240) } : content,
+  };
+}
 
-type CtxShape = Parameters<typeof buildActionExecutionSnapshot>[1];
-
-function summarizeExecution(
-  displayName: string,
-  input: PluginAutoRunActionInput,
-  ctx: unknown
-): string {
-  const display = buildItemDisplay(input?.sourceItem, input?.content);
-  const snapshot = buildActionExecutionSnapshot(input as Parameters<typeof buildActionExecutionSnapshot>[0], ctx as CtxShape);
+function describe(title: string, item: PluginItemSnapshot, content: PluginContent, extra: string[] = []): string {
+  const display = buildItemDisplay(item, content);
   return [
-    displayName,
+    title,
     `${display.typeLabel}: ${display.headline}`,
     display.subheadline,
+    ...display.facts.map((fact) => `${fact.label}: ${fact.value}`),
+    ...extra,
     "",
-    formatTemplateDebugJSON(snapshot)
-  ].join("\n").trim();
+    formatJSON(inputSnapshot(item, content)),
+  ].join("\n");
 }
 
-function createAutoActionVariant({
-  displayName,
-  userMessage
-}: {
-  displayName: string;
-  userMessage: string;
-}): PluginAutoRunActionHandler {
-  return {
-    resolveSession: autoRunResolveSessionStub,
-    async runAutoAction(input: PluginAutoRunActionInput, ctx: unknown): Promise<PluginActionOperationResult> {
-      return actionResult.text(summarizeExecution(displayName, input, ctx), {
-        userMessage
-      });
-    }
-  };
-}
+/** template-auto-action: text and image. */
+export const describeInput: ActionHandler = async ({ item, content }) =>
+  result.text(describe("Template Auto Action", item, content), "Template action context ready");
 
-export function createTemplateAutoAction(): PluginAutoRunActionHandler {
-  return createAutoActionVariant({
-    displayName: "Template Auto Action",
-    userMessage: "Template action context ready"
-  });
-}
+// Plugin Pro quota demo: the text-only and image-only variants below, with the
+// gallery Actions, push the manifest past the free-tier Action quota (3). On a
+// free-tier Host the Actions beyond the quota are locked in the plugin settings.
 
-// Plugin Pro quota demo: paired with templateAutoActionTextOnly /
-// templateAutoActionImageOnly, the manifest declares 4 actions in total. On
-// free-tier hosts the action quota is 3, so PluginsSettingsView shows a 4/3
-// chip and one action becomes gated — exercising the gating from commit
-// 7b7bd286 ("Implement plugin pro quota gating").
-export function createTemplateAutoActionTextOnly(): PluginAutoRunActionHandler {
-  return createAutoActionVariant({
-    displayName: "Template Auto Action (Text)",
-    userMessage: "Template text-only action context ready"
-  });
-}
+/** template-auto-action-text: the manifest offers it for text only. */
+export const describeTextInput: ActionHandler = async ({ item, content }) =>
+  result.text(describe("Template Auto Action (Text)", item, content), "Template text-only action context ready");
 
-export function createTemplateAutoActionImageOnly(): PluginAutoRunActionHandler {
-  return {
-    resolveSession: autoRunResolveSessionStub,
-    async runAutoAction(input: PluginAutoRunActionInput, ctx: unknown): Promise<PluginActionOperationResult> {
-      const display = buildItemDisplay(input?.sourceItem, input?.content);
-      const snapshot = buildActionExecutionSnapshot(input as Parameters<typeof buildActionExecutionSnapshot>[0], ctx as CtxShape);
-
-      let imagePath: string | null = null;
-      try {
-        const ctxAny = ctx as {
-          host?: {
-            action?: {
-              materializeInputImagePath?: () => Promise<{ path: string }>;
-            };
-          };
-        } | null;
-        const response = await ctxAny?.host?.action?.materializeInputImagePath?.();
-        imagePath = typeof response?.path === "string" ? response.path : null;
-      } catch {
-        // host may not support verb — degrade gracefully
-      }
-
-      const lines = [
-        "Template Auto Action (Image)",
-        `${display.typeLabel}: ${display.headline}`,
-        display.subheadline
-      ];
-
-      if (imagePath) {
-        lines.push(`Image path: ${imagePath}`);
-      }
-
-      lines.push("", formatTemplateDebugJSON(snapshot));
-
-      return actionResult.text(lines.join("\n").trim(), {
-        userMessage: "Template image-only action context ready"
-      });
-    }
-  };
-}
+/**
+ * template-auto-action-image: `content` carries image metadata only; the
+ * pixels are in a read-only copy the Host hands out through `ctx.input.imagePath()`.
+ */
+export const describeImageInput: ActionHandler = async ({ item, content }, ctx) => {
+  const { path } = await ctx.input.imagePath();
+  const extra = path === undefined ? [] : [`Image file: ${path}`, `File size: ${formatByteCount((await stat(path)).size)}`];
+  return result.text(describe("Template Auto Action (Image)", item, content, extra), "Template image-only action context ready");
+};

@@ -1,100 +1,94 @@
 <template>
   <main class="auto-shell">
-    <div ref="container" class="auto-shell__content">
+    <div ref="content" class="auto-shell__content">
       <header class="auto-shell__header">
-        <p class="auto-shell__eyebrow">Gallery · height="auto"</p>
-        <h1 class="auto-shell__title">Content drives container</h1>
+        <p class="auto-shell__eyebrow">Gallery · height { max: 800 }</p>
+        <h1 class="auto-shell__title">Content drives the card height</h1>
         <p class="auto-shell__subtitle">
-          Sizes to content via <code>autoFit</code> (<code>@clipbus/plugin-sdk/dom</code>),
-          which posts <code>clipbus.window.setHeight</code> as content grows.
+          <code>autoFit()</code> from <code>@clipbus/plugin-sdk/dom</code> measures this content and sends
+          <code>ctx.renderer.update({ height })</code>; the Host keeps the height inside the manifest range
+          (80 by default, up to 800).
         </p>
       </header>
 
       <section class="auto-shell__panel">
-        <p class="auto-shell__section-label">pluginContext</p>
-        <pre class="auto-shell__snapshot">{{ formatJSON(pluginContextSnapshot) }}</pre>
+        <p class="auto-shell__section-label">ctx.plugin</p>
+        <pre class="auto-shell__snapshot">{{ formatJSON(plugin) }}</pre>
       </section>
 
       <section class="auto-shell__panel">
-        <p class="auto-shell__section-label">item</p>
-        <pre class="auto-shell__snapshot">{{ formatJSON(itemSnapshot) }}</pre>
+        <p class="auto-shell__section-label">item · ctx.item.onChange × {{ itemChanges }}</p>
+        <pre class="auto-shell__snapshot">{{ formatJSON(item) }}</pre>
       </section>
 
-      <section class="auto-shell__growable">
+      <section class="auto-shell__panel">
         <p class="auto-shell__section-label">growable content</p>
         <ol class="auto-shell__list">
-          <li v-for="line in growLines" :key="line">{{ line }}</li>
+          <li v-for="(line, index) in lines" :key="index">{{ line }}</li>
         </ol>
-        <button class="auto-shell__button" type="button" @click="appendLine">Append line</button>
+        <div class="auto-shell__buttons">
+          <button class="auto-shell__button" type="button" @click="appendLine">Append line</button>
+          <button class="auto-shell__button" type="button" :disabled="lines.length <= 1" @click="removeLine">
+            Remove line
+          </button>
+        </div>
       </section>
     </div>
   </main>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from "vue";
-import { clipbus } from "@clipbus/plugin-sdk/ui";
+import { onMounted, onUnmounted, ref, watch } from "vue";
+import { ctx } from "@clipbus/plugin-sdk/view";
 import { autoFit } from "@clipbus/plugin-sdk/dom";
-import { useTopicRef } from "../../../shared/composables/useTopicRef";
+import { useCard } from "../../../shared/composables/useCard";
+import { formatJSON } from "../../../shared/display";
+import { galleryCards } from "../contracts";
 
-const pluginContext = useTopicRef(clipbus.pluginContext);
-const itemTopic = useTopicRef(clipbus.item);
+const { item } = useCard(galleryCards.auto);
+const plugin = ctx.plugin;
 
-const pluginContextSnapshot = computed(() => pluginContext.value ?? null);
-const itemSnapshot = computed(() => itemTopic.value ?? null);
+const itemChanges = ref(0);
+watch(item, () => {
+  itemChanges.value += 1;
+});
 
-// height="auto" is plugin-driven: the host has NO content-sizing of its own.
-// Native resolves auto → bounded(80, 800) and only ever honours window.setHeight,
-// so this renderer MUST drive its own height — observe the content-sized inner
-// layer (.auto-shell__content; no height:100%, so scrollHeight tracks both growth
-// AND shrink) and let the SDK autoFit helper post window.setHeight. The outer
-// .auto-shell is a scroll frame so content past the 800 ceiling scrolls instead
-// of clipping. Bounds mirror native auto → bounded(
-// defaultBoundedMin 80, ceiling 800); kept in sync by a unit test.
-const container = ref<HTMLElement | null>(null);
-let disconnectAutoFit: (() => void) | null = null;
-
-const growLines = ref<string[]>([
-  "Initial line — observe the host shell grow as new lines are appended.",
-]);
+const lines = ref<string[]>(["Initial line — append lines and watch the card grow, remove them and watch it shrink."]);
 
 function appendLine(): void {
-  growLines.value = [...growLines.value, `line @ ${new Date().toLocaleTimeString()}`];
+  lines.value = [...lines.value, `line @ ${new Date().toLocaleTimeString()}`];
 }
 
-function formatJSON(value: unknown): string {
-  return JSON.stringify(value ?? null, null, 2);
+function removeLine(): void {
+  lines.value = lines.value.slice(0, -1);
 }
+
+// Measure the content-sized inner layer (no height: 100%) so the height
+// follows both growth and shrink. The outer shell scrolls once the Host caps
+// the height.
+const content = ref<HTMLElement | null>(null);
+let stopAutoFit: (() => void) | null = null;
 
 onMounted(() => {
-  const target = container.value;
-  if (target) {
-    disconnectAutoFit = autoFit({ min: 80, max: 800, target });
+  if (content.value !== null) {
+    stopAutoFit = autoFit({ target: content.value });
   }
 });
 
 onUnmounted(() => {
-  if (typeof disconnectAutoFit === "function") {
-    disconnectAutoFit();
-    disconnectAutoFit = null;
-  }
+  stopAutoFit?.();
+  stopAutoFit = null;
 });
 </script>
 
 <style scoped>
 .auto-shell {
-  /* Scroll frame: fills the host body (whose height autoFit drives via
-     setHeight). At the 800 ceiling the host clips, so the shell scrolls
-     internally — same contract as the fixed/bounded renderers + native's
-     clip-at-cap rule (plugins self-scroll past the cap). */
   height: 100%;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
 }
 
-/* Content layer — autoFit observes THIS (content-sized, no height:100%), so
-   scrollHeight tracks both growth and shrink. */
 .auto-shell__content {
   display: flex;
   flex-direction: column;
@@ -138,8 +132,7 @@ onUnmounted(() => {
   background: var(--clipbus-surface-elevated, rgba(248, 250, 252, 0.78));
 }
 
-.auto-shell__panel,
-.auto-shell__growable {
+.auto-shell__panel {
   display: grid;
   gap: 6px;
   padding: 8px 10px;
@@ -178,6 +171,11 @@ onUnmounted(() => {
   margin-bottom: 2px;
 }
 
+.auto-shell__buttons {
+  display: flex;
+  gap: 6px;
+}
+
 .auto-shell__button {
   appearance: none;
   border: 1px solid var(--clipbus-border, rgba(148, 163, 184, 0.5));
@@ -189,7 +187,11 @@ onUnmounted(() => {
   padding: 6px 12px;
   border-radius: 999px;
   cursor: pointer;
-  align-self: flex-start;
+}
+
+.auto-shell__button:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .auto-shell__button:focus-visible {

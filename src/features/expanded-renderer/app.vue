@@ -1,185 +1,143 @@
 <template>
   <main class="shell expanded-shell">
-    <section v-if="payload" class="expanded-panel">
-      <!--
-        Accent strip uses an inline style driven by tokenSnapshot.accent. CSS
-        var() would normally be enough, but this single decoration demonstrates
-        the clipbus.theme.on() API for cases (canvas, JS-computed colors)
-        where CSS var() is not enough.
-      -->
-      <div
-        class="expanded-panel__accent"
-        :style="{ backgroundColor: accentHex || 'var(--clipbus-accent, #2563EB)' }"
-        aria-hidden="true"
-      />
+    <!-- autoFit() measures this content-sized wrapper, so the card follows both growth and shrink. -->
+    <div ref="content">
+      <section v-if="payload" class="expanded-panel">
+        <!-- The accent strip reads the theme token in script (env.changed keeps it live);
+             plain CSS would use var(--clipbus-accent), which the Host sets on :root. -->
+        <div class="expanded-panel__accent" :style="{ backgroundColor: env.theme.tokens.accent }" aria-hidden="true" />
 
-      <header class="expanded-panel__header">
-        <p class="expanded-panel__eyebrow">Expanded Preview</p>
-        <h1 class="expanded-panel__title">{{ payload.display.headline }}</h1>
-        <p class="expanded-panel__subtitle">{{ payload.display.subheadline }}</p>
-      </header>
+        <header class="expanded-panel__header">
+          <p class="expanded-panel__eyebrow">Expanded Preview</p>
+          <h1 class="expanded-panel__title">{{ payload.display.headline }}</h1>
+          <p class="expanded-panel__subtitle">{{ payload.display.subheadline }}</p>
+        </header>
 
-      <dl class="expanded-panel__facts">
-        <div
-          v-for="fact in payload.display.facts"
-          :key="fact.label"
-          class="expanded-panel__fact"
-        >
-          <dt>{{ fact.label }}</dt>
-          <dd>{{ fact.value }}</dd>
-        </div>
-      </dl>
+        <dl class="expanded-panel__facts">
+          <div v-for="fact in payload.display.facts" :key="fact.label" class="expanded-panel__fact">
+            <dt>{{ fact.label }}</dt>
+            <dd>{{ fact.value }}</dd>
+          </div>
+        </dl>
 
-      <section v-if="extendedInfo" class="expanded-panel__extended">
-        <p class="expanded-panel__section-label">Item Metadata</p>
-        <div class="expanded-panel__meta-row">
-          <span class="expanded-panel__meta-key">Source</span>
-          <span class="expanded-panel__meta-value">
-            {{ extendedInfo.sourceAppID || "Unknown" }}
-          </span>
-        </div>
-        <div v-if="extendedInfo.tags?.length" class="expanded-panel__chips">
-          <span
-            v-for="tag in extendedInfo.tags"
-            :key="tag"
-            class="expanded-panel__chip"
-          >{{ tag }}</span>
-        </div>
+        <section v-if="payload.excerpt" class="expanded-panel__extended">
+          <p class="expanded-panel__section-label">Excerpt</p>
+          <p class="expanded-panel__excerpt">{{ payload.excerpt }}</p>
+        </section>
+
+        <section class="expanded-panel__extended">
+          <p class="expanded-panel__section-label">Item (live)</p>
+          <div class="expanded-panel__meta-row">
+            <span class="expanded-panel__meta-key">Source</span>
+            <span class="expanded-panel__meta-value">{{ item.sourceApp ?? "Unknown" }}</span>
+            <span class="expanded-panel__meta-key">Pinned</span>
+            <span class="expanded-panel__meta-value">{{ item.pinned ? "yes" : "no" }}</span>
+          </div>
+          <div v-if="item.tags.length" class="expanded-panel__chips">
+            <span v-for="tag in item.tags" :key="tag" class="expanded-panel__chip">{{ tag }}</span>
+          </div>
+        </section>
+
+        <section v-if="analyzing || analysis || analysisError" class="expanded-panel__extended">
+          <p class="expanded-panel__section-label">Analysis (plugin runtime)</p>
+          <p v-if="analyzing" class="expanded-panel__hint">Analyzing…</p>
+          <p v-else-if="analysisError" class="expanded-panel__error">{{ analysisError }}</p>
+          <dl v-else-if="analysis" class="expanded-panel__facts">
+            <div v-for="fact in analysisFacts" :key="fact.label" class="expanded-panel__fact">
+              <dt>{{ fact.label }}</dt>
+              <dd>{{ fact.value }}</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section v-if="showDebug" class="expanded-panel__debug">
+          <p class="expanded-panel__section-label">Debug payload</p>
+          <pre class="expanded-panel__debug-body">{{ debugBlock }}</pre>
+        </section>
+
+        <p class="expanded-panel__hint">
+          Analyze asks the plugin runtime through a typed message. The card height follows the
+          content through autoFit(); the Host keeps it inside the manifest range (120–480).
+        </p>
       </section>
 
-      <section v-if="showDebug" class="expanded-panel__debug">
-        <p class="expanded-panel__section-label">Debug Payload</p>
-        <pre class="expanded-panel__debug-body">{{ debugBlock }}</pre>
-      </section>
-
-      <footer class="expanded-panel__footer">
-        <button
-          class="expanded-panel__toggle"
-          type="button"
-          @click="toggleDebug"
-        >
-          {{ showDebug ? "Hide Debug" : "Show Debug" }}
-        </button>
-        <span class="expanded-panel__hint">
-          Card height follows content. Toggle Debug to see autoFit drive clipbus.window.setHeight.
-        </span>
-      </footer>
-    </section>
-
-    <div v-else class="empty-state">
-      <p class="empty-state__title">Waiting for expanded preview</p>
-      <p class="empty-state__body">
-        Open the expanded renderer from a detected attachment to inspect the live session.
-      </p>
+      <div v-else class="empty-state">
+        <p class="empty-state__title">No expanded payload</p>
+        <p class="empty-state__body">This attachment does not carry a template expanded payload.</p>
+      </div>
     </div>
   </main>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
-import { clipbus } from "@clipbus/plugin-sdk/ui";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { autoFit } from "@clipbus/plugin-sdk/dom";
-import { useTopicRef } from "../../shared/composables/useTopicRef";
-import { decodeTemplateExpandedPayload } from "./payload";
-import type { TemplateExpandedPayload, TemplateExpandedExtended } from "./payload";
-import type { PluginAttachmentPayload } from "@clipbus/plugin-sdk/ui";
+import { useCard, useCardButton } from "../../shared/composables/useCard";
+import { formatByteCount, formatJSON, type DisplayFact } from "../../shared/display";
+import { analyzeItem, type ItemAnalysis } from "./messages";
+import { expandedAttachment, isExpandedPayload } from "./payload";
 
-const attachmentPayload = useTopicRef(clipbus.item.attachment);
-const themeTopic = useTopicRef(clipbus.theme);
+const { item, attachment, env } = useCard(expandedAttachment);
 
-const payload = computed<TemplateExpandedPayload | null>(() =>
-  decodeTemplateExpandedPayload((attachmentPayload.value as PluginAttachmentPayload | undefined)?.attachment?.payloadJson)
-);
+const payload = computed(() => (isExpandedPayload(attachment.value.payload) ? attachment.value.payload : null));
 
-const accentHex = computed<string | null>(() => {
-  const tokens = (themeTopic.value as any)?.tokens as Record<string, string> | undefined;
-  return tokens?.["--clipbus-accent"] ?? null;
+const showDebug = ref(false);
+const analyzing = ref(false);
+const analysis = ref<ItemAnalysis | null>(null);
+const analysisError = ref<string | null>(null);
+
+const analysisFacts = computed<DisplayFact[]>(() => {
+  const result = analysis.value;
+  if (result === null) {
+    return [];
+  }
+  if (result.contentKind === "image") {
+    return [
+      { label: "File", value: result.fileBytes === undefined ? "not available" : formatByteCount(result.fileBytes) },
+      { label: "SHA-256", value: result.sha256 ? `${result.sha256.slice(0, 16)}…` : "not available" },
+    ];
+  }
+  return [
+    { label: "Words", value: String(result.words ?? 0) },
+    { label: "Lines", value: String(result.lines ?? 0) },
+    { label: "Top", value: (result.topWords ?? []).map((entry) => `${entry.word} ×${entry.count}`).join(", ") || "—" },
+  ];
 });
 
-const showDebug = ref<boolean>(false);
+const debugBlock = computed(() => formatJSON({ attachment: attachment.value, analysis: analysis.value }));
 
-let disconnectAutoFit: (() => void) | null = null;
-let unsubHostInvoke: (() => void) | null = null;
-
-async function handleRendererAction(detail: { buttonID?: string } | null | undefined): Promise<void> {
-  const buttonID = detail?.buttonID;
-  if (buttonID === "toggle-debug") {
-    toggleDebug();
-  } else if (buttonID === "copy-debug-json") {
-    await clipbus.clipboard.copyText({ text: debugBlock.value });
+async function runAnalysis(): Promise<void> {
+  analyzing.value = true;
+  analysisError.value = null;
+  try {
+    analysis.value = await analyzeItem.call();
+  } catch (error) {
+    // A Host error carries a contract name (PluginTimeout, …); an error the
+    // handler threw keeps its own name.
+    analysisError.value = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+  } finally {
+    analyzing.value = false;
   }
 }
 
-function toggleDebug(): void {
+// Manifest buttons; the Host draws them and sends renderer.button.
+useCardButton("analyze", runAnalysis);
+useCardButton("toggle-debug", () => {
   showDebug.value = !showDebug.value;
-}
+});
 
-// AutoFit must observe `.expanded-panel` (content-sized — no `height: 100%`)
-// rather than `document.body` so scrollHeight tracks growth AND shrink. But
-// `.expanded-panel` is rendered with `v-if="payload"` — and the host normally
-// pushes the bootstrap event AFTER onMounted, so payload is null when
-// onMounted runs and the element doesn't exist yet. Watch `payload` and
-// attach on the first transition to truthy. Numbers here MUST stay in sync
-// with manifest.json — covered by a unit test.
-async function attachAutoFitIfReady(): Promise<void> {
-  if (disconnectAutoFit || !payload.value) {
-    return;
+const content = ref<HTMLElement | null>(null);
+let stopAutoFit: (() => void) | null = null;
+
+onMounted(() => {
+  if (content.value !== null) {
+    stopAutoFit = autoFit({ target: content.value });
   }
-  await nextTick();
-  const target = document.querySelector(".expanded-panel") as HTMLElement | null;
-  if (!target) {
-    return;
-  }
-  disconnectAutoFit = autoFit({ min: 120, max: 480, target });
-}
-
-onMounted(async () => {
-  await clipbus.attachmentRenderer.setButtons({ buttons: [
-    { id: "toggle-debug", title: showDebug.value ? "Hide Debug" : "Show Debug", isEnabled: true },
-    { id: "copy-debug-json", title: "Copy Debug JSON", isEnabled: true },
-  ]});
-
-  watch(showDebug, async (visible) => {
-    await clipbus.attachmentRenderer.setButtons({ buttons: [
-      { id: "toggle-debug", title: visible ? "Hide Debug" : "Show Debug", isEnabled: true },
-      { id: "copy-debug-json", title: "Copy Debug JSON", isEnabled: true },
-    ]});
-  });
-
-  // Subscribe to host action invocations (e.g. "toggle-debug" button)
-  unsubHostInvoke = clipbus.attachmentRenderer.onHostInvoke.on(handleRendererAction);
-
-  // Fires immediately for sync-available bootstrap; otherwise fires when the
-  // attachment topic fires after didFinish.
-  watch(payload, attachAutoFitIfReady, { immediate: true });
 });
 
 onUnmounted(() => {
-  if (typeof unsubHostInvoke === "function") {
-    unsubHostInvoke();
-    unsubHostInvoke = null;
-  }
-  if (typeof disconnectAutoFit === "function") {
-    disconnectAutoFit();
-    disconnectAutoFit = null;
-  }
-});
-
-const extendedInfo = computed<TemplateExpandedExtended | null>(() => payload.value?.extended ?? null);
-
-const debugBlock = computed<string>(() => {
-  if (!payload.value) {
-    return "";
-  }
-  return JSON.stringify(
-    {
-      kind: payload.value.kind,
-      extended: payload.value.extended,
-      debug: payload.value.debug
-    },
-    null,
-    2
-  );
+  stopAutoFit?.();
+  stopAutoFit = null;
 });
 </script>
 
@@ -355,34 +313,23 @@ const debugBlock = computed<string>(() => {
   overflow: auto;
 }
 
-.expanded-panel__footer {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  justify-content: space-between;
-  flex-wrap: wrap;
+.expanded-panel__excerpt {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--clipbus-text-secondary, #475569);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
-.expanded-panel__toggle {
-  appearance: none;
-  border: 1px solid var(--clipbus-border, rgba(148, 163, 184, 0.5));
-  background: var(--clipbus-surface-elevated, #f1f5f9);
-  color: var(--clipbus-text-primary, #0f172a);
+.expanded-panel__error {
+  margin: 0;
   font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  padding: 6px 12px;
-  border-radius: 999px;
-  cursor: pointer;
-}
-
-.expanded-panel__toggle:focus-visible {
-  outline: 2px solid var(--clipbus-accent, #2563EB);
-  outline-offset: 2px;
+  color: var(--clipbus-danger, #dc2626);
 }
 
 .expanded-panel__hint {
-  flex: 1 1 220px;
+  margin: 0;
   color: var(--clipbus-text-tertiary, #64748b);
   font-size: 11px;
   line-height: 1.4;

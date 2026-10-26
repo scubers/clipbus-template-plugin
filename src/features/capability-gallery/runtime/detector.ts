@@ -1,81 +1,37 @@
-// Gallery detector — emits 3 attachments per supported input kind so the
-// host stage simultaneously surfaces all 3 attachmentRenderer height shapes
-// (fixed / auto / bounded).
+// gallery-detector: three cards per item, one per manifest height shape.
 //
-// IMPORTANT: the host treats (attachmentType, attachmentKey, payloadJson) as
-// the identity for an attachment. Anything that varies between detector runs
-// on the same item will look like "new data" to the host and re-trigger
-// `detectUpdated`, which on this host implementation cascades into
-// `syncAttachmentRenderArea` and wipes the renderer's UI-side
-// `setButtons` override. Keep keys and payload fields stable per (item, kind).
+// This detector is cheap, so it writes on every trigger, recopy included. The
+// Host drops writes equal to what is stored, so keep payloads stable for the
+// same content (no timestamps or counters): an unchanged payload means no
+// item.changed and no search-extension sync event on each copy.
+//
+// Entries carry no `card`: the Host keeps the card already stored for the
+// same type and key, so a title or buttons a page wrote back with
+// `ctx.renderer.update` survive re-detection. The manifest gives the defaults.
 
-import type { PluginDetectorHandler, PluginDetectorInput, PluginDetectorArtifact } from "@clipbus/plugin-sdk/runtime";
-import {
-  GALLERY_ATTACHMENT_TYPES,
-  encodeGalleryPayload,
-  type GalleryAttachmentKind,
-  type GalleryAttachmentPayload,
-  type GalleryInputKind,
-} from "./payloads.ts";
+import type { DetectorHandler } from "@clipbus/plugin-sdk/runtime";
+import { GALLERY_SHAPES, galleryCards, type GalleryShape } from "../contracts";
 
-const CAPABILITY_LABELS: Record<GalleryAttachmentKind, string> = {
-  fixed: "Gallery: fixed",
-  auto: "Gallery: auto",
-  bounded: "Gallery: bounded",
+export const GALLERY_SEARCH_SCOPE = "gallery";
+
+const HIGHLIGHTS: Record<GalleryShape, string[]> = {
+  fixed: ["fixed height", "startup snapshot", "env.onChange", "renderer.onButton"],
+  auto: ["autoFit", "item.onChange", "ctx.plugin"],
+  bounded: ["every view method", "runtime probes", "asset URLs", "renderer.update"],
 };
 
-const CAPABILITY_SUMMARY: Record<GalleryAttachmentKind, string[]> = {
-  fixed: ["item.attachment", "item.search", "theme", "attachmentRenderer.setButtons"],
-  auto: ["pluginContext", "item", "window.setHeight"],
-  bounded: [
-    "item.addTags", "item.setTags", "item.setPinned", "item.setAttachments",
-    "item.setSearchExtension", "item.readAttachment", "item.materializeImagePath",
-    "clipboard.copyText",
-    "navigation.openUrl", "navigation.revealInFinder", "navigation.openFilePath",
-    "window.setHeight", "window.autoFit",
-    "settings.get", "settings.getAll",
-    "console.log",
-    "textInput.stateChanged",
-    "runtime.invoke",
-    "attachmentRenderer.setButtons",
-  ],
+export const detectGallery: DetectorHandler = async ({ content }, ctx) => {
+  await Promise.all([
+    ...GALLERY_SHAPES.map((shape) =>
+      galleryCards[shape].set(ctx, [{ key: shape, payload: { shape, inputKind: content.kind, highlights: HIGHLIGHTS[shape] } }]),
+    ),
+    ctx.item.setSearchExtension({
+      scope: GALLERY_SEARCH_SCOPE,
+      entries: GALLERY_SHAPES.map((shape) => ({
+        key: shape,
+        text: `capability gallery ${shape} ${HIGHLIGHTS[shape].join(" ")}`,
+        label: "Gallery",
+      })),
+    }),
+  ]);
 };
-
-function isSupported(contentKind: unknown): contentKind is GalleryInputKind {
-  return contentKind === "text" || contentKind === "image" || contentKind === "path_reference";
-}
-
-function buildArtifact(kind: GalleryAttachmentKind, inputKind: GalleryInputKind): PluginDetectorArtifact {
-  const capabilitiesShown = CAPABILITY_SUMMARY[kind];
-  const payload: GalleryAttachmentPayload = {
-    kind,
-    title: CAPABILITY_LABELS[kind],
-    inputKindSeen: inputKind,
-    capabilityCount: capabilitiesShown.length,
-    capabilitiesShown,
-  };
-  return {
-    attachmentType: GALLERY_ATTACHMENT_TYPES[kind],
-    attachmentKey: kind,
-    payloadJson: encodeGalleryPayload(payload),
-    searchProjection: {
-      scope: `gallery_${kind}`,
-      searchText: [CAPABILITY_LABELS[kind], inputKind, ...capabilitiesShown].join(" "),
-      label: CAPABILITY_LABELS[kind],
-    },
-  };
-}
-
-export function createGalleryDetector(): PluginDetectorHandler {
-  return {
-    async detect(input: PluginDetectorInput): Promise<PluginDetectorArtifact[]> {
-      const contentKind = (input?.content as { kind?: unknown } | null | undefined)?.kind;
-      if (!isSupported(contentKind)) return [];
-      return [
-        buildArtifact("fixed", contentKind),
-        buildArtifact("auto", contentKind),
-        buildArtifact("bounded", contentKind),
-      ];
-    },
-  };
-}

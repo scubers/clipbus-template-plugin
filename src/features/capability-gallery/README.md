@@ -1,172 +1,121 @@
 # capability-gallery
 
-`capability-gallery` is the template-plugin's **full-coverage capability
-reference**. It exists alongside the four minimal sample features
-(`preview-renderer`, `expanded-renderer`, `auto-action`, `draft-action`) and
-complements them: the samples remain the minimal "this is what a real plugin
-looks like" starting point, while this directory demonstrates **every** SDK
-capability — including the corners not covered by the samples — in code you
-can run, click, and watch.
+`capability-gallery` is the template's **capability reference**. The three
+sample features (`preview-renderer`, `expanded-renderer`, `auto-action`, plus
+the `template-detector` that feeds them) are the minimal "this is what a real
+plugin looks like" starting point; this directory puts every capability of
+plugin protocol V2 in one place you can click and watch, including the ones a
+real plugin rarely needs.
 
-If you are new to writing plugins, read the four sample features first. If you
-already know the basics and want to see what the SDK can do end-to-end, open
-this directory.
+If you are new to writing plugins, read the sample features first.
 
 ## Directory layout
 
-```
+```text
 capability-gallery/
-├── README.md                       — this file (capability matrix + how to run)
-├── runtime/                        — Node-side handlers
-│   ├── payloads.ts                   GalleryAttachmentPayload + encode/decode
-│   ├── detector.ts                   gallery-detector: 3 artifacts per input
-│   ├── auto-actions.ts               3 auto-run actions (text / image / none)
-│   ├── draft-action.ts               draft-action handler + RPC message bridge
-│   ├── renderers.ts                  3 attachmentRenderer resolvers
-│   ├── messages.ts                   GALLERY_RPC_KEYS — keys shared with UI
-│   └── solid-png.ts                  zero-dep solid-color PNG encoder (createSolidImage)
-├── renderer-fixed-ui/              — height: 240 (compact, read-only)
-├── renderer-auto-ui/               — height: "auto" (content-driven)
-├── renderer-bounded-ui/            — height: { min: 120, max: 480 } (MAIN STAGE)
-│   ├── catalog.ts                    galleryCapabilitySections — single
-│   │                                 source of truth for the button grid
-│   └── components/                   LogPanel, TopicMonitor, CapabilityBoard,
-│                                     RuntimeBridgePanel, TextInputProbe,
-│                                     ImagePanel (asset.currentItemImageUrl + createSolidImage)
-└── draft-action-ui/                — action-scope capability tour
-    ├── catalog.ts                    galleryActionCapabilities — action-scope
-    └── app.vue                       action.{setButtons,complete×3,allocate…} + image asset
+├── README.md                 — this file (capability matrix, how to run)
+├── contracts.ts              — shared by runtime and pages: defineAttachment for the
+│                               three cards and the counter, defineMessage for
+│                               runtimeProbe / renderSwatch / fail
+├── runtime/                  — Node only
+│   ├── detector.ts             gallery-detector: three cards per item, written every run
+│   ├── actions.ts              gallery-auto-text / -image / -none: one per result kind
+│   ├── messages.ts             message handlers registered in definePlugin({ messages })
+│   ├── probes.ts               one demo call per runtime ctx method
+│   ├── swatch.ts               writes PNGs into the plugin cache via ctx.plugin.path
+│   └── solid-png.ts            zero-dependency solid-color PNG encoder
+├── renderer-fixed-ui/        — height { min: 240, max: 240 }
+├── renderer-auto-ui/         — height { max: 800 }, sized by autoFit()
+└── renderer-bounded-ui/      — height { min: 120, max: 480 } — the main stage
+    ├── catalog.ts              one button per page-side capability + the runtime probes
+    ├── log.ts                  log entries and error description
+    └── components/             CapabilityBoard, EventMonitor, ImagePanel,
+                                TextInputProbe, LogPanel
 ```
 
-## Capability coverage matrix
+## Page side (`ctx` from `@clipbus/plugin-sdk/view`)
 
-Every capability verb is documented below. Runtime-only item mutations are
-reached through the gallery's user-RPC bridge; the "where" column explicitly
-marks cases that are contract-tested without a live button.
+| Capability | Where |
+|---|---|
+| `ctx.item.get` / `getContent` / `getAttachments` | bounded · Item reads |
+| `ctx.item.setAttachments` | bounded · Item writes (counter + 1, clear); `galleryCounter.set(ctx, …)` |
+| `ctx.item.setSearchExtension` | bounded · Item writes (note, clear) |
+| `ctx.item.addTags` / `removeTags` / `setTags` / `setPinned` | bounded · Item writes |
+| `ctx.system.copyText` / `openUrl` / `openPath` / `reveal` | bounded · System (plus a refused `file:` URL) |
+| `ctx.renderer.update` — `title`, `tint`, `buttons`, `height`, `null` | bounded · Card appearance; card buttons Expand / Compact / AutoFit |
+| `ctx.renderer.context(contract)` | every page through `useCard`; bounded · Startup snapshot |
+| `ctx.runtime.call` / `contract.call` | bounded · Messages and Runtime probes; ImagePanel; expanded sample (Analyze) |
+| `ctx.env.get` / `ctx.settings.get` | bounded · Startup snapshot, env and settings |
+| `ctx.log.write` and `ctx.log.debug/info/warn/error` | bounded · Plugin log |
+| `ctx.plugin` / `ctx.capabilities.has` | bounded · Startup snapshot; auto page shows `ctx.plugin` |
+| `ctx.asset.itemImageUrl()` / `ctx.asset.fileUrl(path)` | bounded · ImagePanel |
+| `ctx.item.onChange` (`item.changed`) | every page through `useCard`; auto page counts them; bounded · EventMonitor |
+| `ctx.env.onChange` (`env.changed`) | every page through `useCard`; fixed page shows the live theme tokens |
+| `ctx.renderer.onButton(id, fn)` / `onButton(fn)` | bounded and the samples use the id form; fixed page uses the listener form |
+| `autoFit()` (`@clipbus/plugin-sdk/dom`) | auto page; bounded · AutoFit card button; expanded sample |
+| `reportInputState()` (`/dom`) | installed in every `main.ts`; bounded · Text input shows what it reports |
+| `forwardConsole()` (`/dom`) | installed in every `main.ts`; bounded · Plugin log → console.log |
 
-| domain | verb | where | scope |
-|---|---|---|---|
-| runtime | `runtime.invoke` | bounded-ui · Runtime bridge panel | base |
-| item | `item.setTags` | bounded-ui · Item mutations | base (perm: setTags) |
-| item | `item.addTags` | bounded-ui · Item mutations | base (perm: setTags) |
-| item | `item.removeTags` | bounded-ui · Item mutations | base (perm: setTags) |
-| item | `item.setPinned` | bounded-ui · Item mutations | base (perm: setPinned) |
-| item | `item.setAttachments` | registered runtime RPC bridge; wire test only | runtime (perm: setAttachment) |
-| item | `item.setSearchExtension` | bounded-ui · Item mutations | base (perm: setSearchExtension) |
-| item | `item.materializeImagePath` | bounded-ui · Item reads | base |
-| item | `item.readAttachment` | bounded-ui · Item reads | base |
-| clipboard | `clipboard.copyText` | bounded-ui · Clipboard | base |
-| navigation | `navigation.openUrl` | bounded-ui · Navigation | base |
-| navigation | `navigation.revealInFinder` | bounded-ui · Navigation | base |
-| navigation | `navigation.openFilePath` | bounded-ui · Navigation | base |
-| window | `window.setHeight` | bounded-ui · Window sizing | base |
-| window | `window.autoFit` | bounded-ui · Window sizing | base |
-| settings | `settings.get` | bounded-ui · Settings | base |
-| settings | `settings.getAll` | bounded-ui · Settings | base |
-| console | `console.log` | bounded-ui · Diagnostics | base |
-| console | `console.diagnostic` | bounded-ui · Diagnostics, closed event/reason/count/duration | base |
-| textInput | `textInput.stateChanged` | bounded-ui · TextInputProbe (focus/blur) | base |
-| attachmentRenderer | `attachmentRenderer.setButtons` | bounded-ui app onMounted; fixed-ui app onMounted | attachment |
-| action | `action.allocateImageTempPath` | draft-action-ui · catalog button | action |
-| action | `action.setButtons` | draft-action-ui · cycle-buttons | action |
-| action | `action.complete` (×3 resultKinds) | draft-action-ui · complete-text / -image / -none | action |
+## Runtime side (`ctx` in a handler)
 
-That's **23 verbs total**: 19 base + 1 attachment + 3 action. The contract
-test at `tests/integration/galleryWiring.test.cjs` enforces that every entry
-above appears as a button (or programmatic call) in the gallery catalogs.
+The bounded page's **Runtime probes** section calls `runtimeProbe.call({ probe })`;
+the handler runs one runtime ctx method inside that message call
+(`runtime/probes.ts`). Writes are staged and committed when the handler
+returns; `ctx.system.*` side effects run at once.
 
-In the real host, `complete` with a `text`, `image`, or `path_reference` value
-enters a result-confirmation stage from which the user can explicitly continue
-the Action cascade; `none` cannot continue. Calling `complete` never advances
-automatically. The local Preview workbench records the call but deliberately
-does not simulate the host's confirmation, next-step filtering, rollback, or
-focus state machine.
+| Capability | Where |
+|---|---|
+| `ctx.item.*` (all nine methods) | probes; detectors write attachments and search entries |
+| `ctx.input.imagePath()` | probe; `gallery-auto-image`; the template detector and Analyze |
+| `ctx.system.*` | probes (openPath / reveal on a swatch); `gallery-auto-none` copies a note |
+| `ctx.env.get` / `ctx.settings.get` | probes |
+| `ctx.log.write` and level helpers | probes; `gallery-auto-text` |
+| `ctx.plugin.id` / `version` / `dirs` / `path(rel)` | probe; `swatch.ts` writes `cache/swatches/*.png` |
+| `ctx.capabilities.has` | probe |
+| `result.text` / `result.image` / `result.none` | `gallery-auto-text` / `-image` / `-none` |
+| A handler error with its own name and data | `gallery.fail`; the page shows it as `GalleryDemoError (plugin handler)` |
 
-In manifest schema v4, detector artifacts and `item.setAttachments` entries do
-not carry a sync-scope field. The host always persists their attachments as
-local-only derived data. The gallery's wire test sends a scope-free mutation
-payload and proves that it reaches `item.setAttachments`; the running gallery
-intentionally has no clickable attachment-write button because it would leave
-a demo record on the user's history item. Searchable cross-device text remains
-an explicit `searchProjection` / `item.setSearchExtension` concern.
+## Notes
 
-### Image asset rendering (`clipbus.asset`)
-
-Image display sits outside the button-grid matrix above — an image needs to be
-*shown*, not logged — so it lives in a dedicated `ImagePanel` component rather
-than a catalog button:
-
-| capability | side | where |
-|---|---|---|
-| `asset.currentItemImageUrl` | ui | bounded-ui · ImagePanel |
-| `asset.currentActionInputImageUrl` | ui/action | draft-action-ui · current Action image |
-| `action.materializeInputImagePath` | runtime/action | gallery-auto-image; draft copy-image RPC |
-| `action.allocateOutputFilePath` | runtime/action | gallery-auto-path-reference |
-| `asset.allocateImageTempPath` + `asset.registerImage` | runtime | bounded-ui · ImagePanel & draft-action-ui — "Generate solid image (Node)" button → `createSolidImage` RPC |
-
-The button asks the Node runtime to generate a random solid-color PNG
-(`runtime/solid-png.ts`, a zero-dep encoder), register it via
-`host.asset.registerImage`, and hand back the `clipbus-asset://` URL the WebView
-renders in an `<img>`.
-Both UIs first obtain a session-owned PNG path through
-`host.asset.allocateImageTempPath`; Windows rejects unallocated source paths.
-
-> **Coverage gap:** the third asset verb, `asset.pathReferenceImageUrl`, is
-> **not** demonstrated — it needs a clipboard `path_reference` item pointing at
-> an image file, which the gallery detector does not set up. Its usage is
-> identical to `currentItemImageUrl`: `await clipbus.asset.pathReferenceImageUrl({ index })`.
-
-### Host-event coverage
-
-| # | host event | where it shows up |
-|---|---|---|
-| 1 | `pluginContext` | bounded-ui · TopicMonitor; auto-ui · header snapshot |
-| 2 | `item` | bounded-ui · TopicMonitor; auto-ui · header snapshot |
-| 3 | `item.attachment` | bounded-ui · TopicMonitor; fixed-ui snapshot |
-| 4 | `item.search` | bounded-ui · TopicMonitor; fixed-ui snapshot |
-| 5 | `actionSession` (`clipbus.action`) | draft-action-ui · actionSession panel |
-| 6 | `action.draft` | draft-action-ui · draft form + JSON snapshot |
-| 7 | `theme` | bounded-ui · TopicMonitor; fixed-ui snapshot |
-| 8 | `attachmentRenderer.onHostInvoke` (stream) | bounded-ui · log panel (expand/compact/reset-height triggers) |
-| 9 | `action.onHostInvoke` (stream) | draft-action-ui · log panel (host-strip clicks) |
+- **Interactive writes vs detection output.** The detector replaces its own
+  output on every run; writes from a page or a message handler belong to the
+  plugin and survive re-detection. The counter therefore has its own type
+  (`plugin.template.full.gallery.counter`), and that type has no renderer, so it
+  never shows as a card. Page writes leave records on the item: use the
+  *clear* buttons to remove the counter and the note.
+- **Card appearance is data.** `renderer.update({ title, tint, buttons })` is
+  written back to the attachment card and outlives the page; `null` returns to
+  the attachment card, then the manifest default. The gallery detector writes
+  its entries without `card`, so what a page wrote back survives
+  re-detection. `height` only lasts for the current display.
+- **setTags replaces every tag**, the user's included; the demos read the tags
+  first and keep them.
+- **openPath / reveal take an existing absolute path.** Pages only know
+  plugin-relative paths, so the runtime draws a swatch and returns its
+  absolute path for these two calls. Asset URLs always take the
+  plugin-relative path (`cache/...`).
+- **Errors.** A Host error carries a contract name (`PluginInvalidRequest`,
+  `PluginHandlerNotFound`, …); an error a handler threw keeps its own name and
+  arrives as a `PluginRemoteError`. The log tells them apart with
+  `instanceof PluginRemoteError`, which holds whichever SDK entry point
+  (`@clipbus/plugin-sdk` or `/view`) the call went through.
+- **Stable payloads.** Detection runs on every copy. The gallery detector's
+  payloads depend only on the content, so a repeated copy changes nothing and
+  sends no `item.changed`.
+- **Three cards per item is intentional excess.** A real plugin writes one
+  attachment per real intent; the gallery writes three to show the three
+  height policies side by side.
+- **The Plugin Pro quota appears naturally.** Six Actions and five renderers
+  exceed the free-tier quotas (three each); on a free-tier Host the entries
+  beyond them are locked.
 
 ## How to run
 
-1. Build the plugin: `npm run build`.
-2. Install via your usual host flow (the gallery is part of the same
-   template-plugin manifest — it ships alongside the four sample features).
-3. Copy any **text**, **image**, or **file path** to the Clipbus clipboard.
-4. The gallery detector emits three attachments — `Gallery: fixed`,
-   `Gallery: auto`, `Gallery: bounded` — onto the same item. Each opens a
-   different renderer demonstrating a height shape.
-5. The bounded renderer is the main stage: click the buttons in each section
-   and watch the log panel. The Runtime bridge panel proves that the same
-   capability surface exists on the Node runtime side and is callable from
-   the UI via `clipbus.runtime.invoke`.
-6. From the host action menu, four new actions appear under "Gallery":
-   - **Gallery Auto (text / image / none)** — auto-run actions that emit one
-     of the three `actionResult` shapes.
-   - **Gallery Draft** — opens the draft-action UI for the action-scope verbs.
-
-## Why this is separate from the sample features
-
-The four sample features carry the "minimal, self-contained, real" definition.
-If you add buttons or topics to them, new plugin authors copy the kitchen
-sink along with the basics. The gallery solves the inverse problem: showing
-every SDK affordance in one place, even the ones you rarely use in a real
-plugin.
-
-## Notes & non-goals
-
-- **Permission rejection paths are not demonstrated.** `manifest.json`
-  declares all four permissions (`setAttachment`, `setSearchExtension`,
-  `setTags`, `setPinned`), so the gated buttons all succeed. To see a
-  rejection path, remove a permission from the manifest, rebuild, and
-  re-trigger the relevant button.
-- **Pro quota chip appears naturally.** Adding three auto-run actions plus
-  one draft action brings the manifest to 8 declared actions, which sits
-  above the free-tier quota (3). The host surfaces an 8/3 chip in plugin
-  settings — that's pre-existing host behaviour, not a gallery feature.
-- **Three attachments per item is intentional excess.** Real plugins should
-  produce one attachment per real intent. The gallery emits three only to
-  exercise all three height shapes side-by-side.
+1. `npm run dev` opens the preview workbench; pick a *Gallery* scenario. The
+   workbench answers messages with stubs (`src/preview/scenarios`).
+2. For the real runtime, `npm run build`, then add the project in Clipbus →
+   Settings → Plugins → Add Plugin → Local Development Plugin.
+3. Copy any text or image. Three gallery cards appear on the item; the bounded
+   one is the main stage: click buttons and watch the log and the Host events.
+4. The Action menu lists *Gallery Auto (text / image / none)*, one per result
+   kind.

@@ -1,8 +1,9 @@
 // Zero-dependency solid-color PNG encoder.
 //
-// Used by the capability-gallery demo to prove the `clipbus-asset://` rendering
-// path end-to-end: Node generates an image, registers it via
-// `host.asset.registerImage`, and the WebView displays the returned token URL.
+// Used by the capability-gallery demo to prove the plugin-file image path
+// end-to-end: Node writes an image into the plugin cache, a card page shows it
+// through `ctx.asset.fileUrl("cache/...")`, and an Action returns it as an
+// image result.
 //
 // We hand-roll the encoder (CRC32 table + zlib deflate) rather than pull in
 // `pngjs`/`sharp` — the template plugin's only runtime dependency is `vue`, and
