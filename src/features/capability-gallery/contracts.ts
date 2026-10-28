@@ -58,15 +58,17 @@ export const RUNTIME_PROBES = [
   "item.setPinned",
   "input.imagePath",
   "system.copyText",
-  "system.openUrl",
-  "system.openPath",
   "system.reveal",
   "env.get",
   "settings.get",
   "log.write",
   "plugin.path",
+  "plugin.folder",
   "capabilities.has",
 ] as const;
+
+/** The manifest's `permissions.folders` slot the gallery exports swatches to; the user picks the folder. */
+export const EXPORT_FOLDER = "exports";
 
 export type RuntimeProbe = (typeof RUNTIME_PROBES)[number];
 
@@ -85,14 +87,37 @@ export interface SwatchRequest {
 
 export interface SwatchResult {
   color: string;
-  /** Plugin-relative path (`cache/…`); pages turn it into a URL with `ctx.asset.fileUrl`. */
+  /** Plugin-relative path (`cache/…`): pages turn it into a URL with `ctx.asset.fileUrl`; `system.reveal` takes it as is. */
   path: string;
-  /** Absolute path, for `system.openPath` and `system.reveal`, which take absolute paths only. */
-  absolutePath: string;
 }
 
 /** Let Node draw a solid-color PNG into the plugin cache. */
 export const renderSwatch = defineMessage<SwatchRequest, SwatchResult>("gallery.renderSwatch");
+
+// ── Limits ───────────────────────────────────────────────────────────────────
+
+/**
+ * Things the runtime may not do. `runtimeLimit` tries one and answers how it ended; in Clipbus every
+ * one is refused, so the answer shows the error a plugin gets.
+ */
+export const RUNTIME_LIMITS = ["network", "startProgram", "readHome", "writePackage", "revealOutside"] as const;
+
+export type RuntimeLimit = (typeof RUNTIME_LIMITS)[number];
+
+export interface RuntimeLimitResult {
+  limit: RuntimeLimit;
+  /** What the runtime tried. */
+  attempt: string;
+  outcome: "refused" | "allowed";
+  /** The error that refused it, as `code: message` (or `name: message`). */
+  error?: string;
+}
+
+/** Try one thing the runtime may not do and answer how it ended. */
+export const runtimeLimit = defineMessage<{ limit: RuntimeLimit }, RuntimeLimitResult>("gallery.runtimeLimit");
+
+/** The address the network examples try; every http(s) address is refused the same way. */
+export const LIMIT_URL = "https://clipbus.app/";
 
 /** A handler that throws on purpose: the page receives the error with its own name and data. */
 export const failOnPurpose = defineMessage<{ reason: string }, never>("gallery.fail");

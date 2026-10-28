@@ -4,7 +4,7 @@
 
 > Read [GUIDE.md](./GUIDE.md) before writing a new plugin. Together with this project, it is the complete starter kit for developing Clipbus plugins.
 
-`template-plugin/` is a **minimal yet full-featured** template project for third-party plugin authors and AI assistants. It is written for plugin protocol V2 (manifest `schemaVersion` 5) and the SDK package `@clipbus/plugin-sdk` 1.x, and shows every extension point: detectors, card pages (renderers) and Actions, plus typed messages between a card page and the plugin runtime.
+`template-plugin/` is a **minimal yet full-featured** template project for third-party plugin authors and AI assistants. It is written for plugin protocol V2 (manifest `schemaVersion` 6) and the matching SDK package `@clipbus/plugin-sdk`, and shows every extension point: detectors, card pages (renderers) and Actions, plus typed messages between a card page and the plugin runtime.
 
 > **Install hook:** when the manifest declares `install`, Clipbus asks for confirmation before running it. Clipbus provides its verified npm command or CLI through `CLIPBUS_PLUGIN_NPM_PATH`: this template runs JavaScript CLI files with the current Node process and executes other host-provided npm executables or shims directly. It never falls back to an `npm` found on PATH. See [GUIDE.md](./GUIDE.md) for details.
 
@@ -33,7 +33,7 @@ Contracts that both sides use — attachment payload types (`defineAttachment<T>
 
 ```text
 template-plugin/
-├── manifest.json                       ← schemaVersion 5: detectors, renderers, actions
+├── manifest.json                       ← schemaVersion 6: detectors, renderers, actions
 ├── package.json                        ← depends on @clipbus/plugin-sdk
 ├── scripts/
 │   ├── build-runtime.mjs               ← src/plugin.ts → runtime.nodeEntry (dist/plugin.cjs)

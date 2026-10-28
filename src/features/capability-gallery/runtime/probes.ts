@@ -3,9 +3,18 @@
 // card's item and `ctx.input` is its content. Writes are staged and committed
 // when the handler returns; `ctx.system.*` side effects run at once.
 
+import { copyFile } from "node:fs/promises";
+import { basename, join } from "node:path";
 import type { PluginMethodName } from "@clipbus/plugin-sdk";
 import type { PluginRuntimeCtx } from "@clipbus/plugin-sdk/runtime";
-import { GALLERY_COUNTER_KEY, GALLERY_NOTE_SCOPE, galleryCards, galleryCounter, type RuntimeProbe } from "../contracts";
+import {
+  EXPORT_FOLDER,
+  GALLERY_COUNTER_KEY,
+  GALLERY_NOTE_SCOPE,
+  galleryCards,
+  galleryCounter,
+  type RuntimeProbe,
+} from "../contracts";
 import { writeSwatch } from "./swatch";
 
 export const PROBE_TAG = "gallery-runtime";
@@ -53,17 +62,9 @@ export async function runProbe(probe: RuntimeProbe, ctx: PluginRuntimeCtx): Prom
     case "system.copyText":
       await ctx.system.copyText({ text: "Copied by the gallery runtime" });
       return { copied: true };
-    case "system.openUrl":
-      await ctx.system.openUrl({ url: "https://clipbus.app/" });
-      return { opened: "https://clipbus.app/" };
-    case "system.openPath": {
-      const swatch = await writeSwatch(ctx, "#f97316");
-      await ctx.system.openPath({ path: swatch.absolutePath });
-      return { opened: swatch.path };
-    }
     case "system.reveal": {
       const swatch = await writeSwatch(ctx, "#f97316");
-      await ctx.system.reveal({ path: swatch.absolutePath });
+      await ctx.system.reveal({ path: swatch.path });
       return { revealed: swatch.path };
     }
     case "env.get":
@@ -81,6 +82,16 @@ export async function runProbe(probe: RuntimeProbe, ctx: PluginRuntimeCtx): Prom
         dirs: ctx.plugin.dirs,
         swatches: ctx.plugin.path("cache/swatches"),
       };
+    case "plugin.folder": {
+      // Outside its own directories a plugin reaches only the folders the user chose for it.
+      const folder = ctx.plugin.folder(EXPORT_FOLDER);
+      if (folder === null) return { folder: EXPORT_FOLDER, granted: false };
+      const swatch = await writeSwatch(ctx, "#22c55e");
+      const exported = join(folder, basename(swatch.path));
+      await copyFile(ctx.plugin.path(swatch.path), exported);
+      await ctx.system.reveal({ path: exported });
+      return { folder: EXPORT_FOLDER, granted: true, exported };
+    }
     case "capabilities.has":
       return Object.fromEntries(PROBED_CAPABILITIES.map((name) => [name, ctx.capabilities.has(name)]));
     default: {

@@ -1,12 +1,11 @@
 {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "plugin": {
     "id": "plugin.template.full",
     "title": "Template Plugin",
     "version": "0.2.0"
   },
   "install": {
-    "runtime": "node",
     "entry": "scripts/install.mjs"
   },
   "runtime": {
@@ -128,5 +127,10 @@
       "plugin.template.full.gallery.counter"
     ],
     "searchScopes": ["template", "gallery", "gallery.note"]
+  },
+  "permissions": {
+    "folders": [
+      { "id": "exports", "title": "Folder for exported swatches", "access": "readWrite" }
+    ]
   }
 }

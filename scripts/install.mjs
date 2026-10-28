@@ -42,6 +42,16 @@ function runNpm(invocation, args) {
   });
 }
 
+/** With a committed lockfile, install exactly the versions and checksums it pins. */
+async function hasLockfile() {
+  try {
+    await access(path.join(projectRoot, "package-lock.json"));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const npmInvocation = await requireNpmInvocation();
-await runNpm(npmInvocation, ["install"]);
+await runNpm(npmInvocation, [(await hasLockfile()) ? "ci" : "install"]);
 await runNpm(npmInvocation, ["run", "build"]);

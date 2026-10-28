@@ -30,5 +30,5 @@ export async function writeSwatch(ctx: PluginRuntimeCtx, color: string): Promise
   const absolutePath = ctx.plugin.path(path);
   await mkdir(dirname(absolutePath), { recursive: true });
   await writeFile(absolutePath, solidColorPng(SWATCH_SIZE, SWATCH_SIZE, rgb));
-  return { color: normalized, path, absolutePath };
+  return { color: normalized, path };
 }

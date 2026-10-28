@@ -110,7 +110,7 @@ const galleryMessages: PreviewScenario["messages"] = {
   [renderSwatch.name]: (data): SwatchResult => {
     const color = (data as { color?: string } | null)?.color ?? "#f97316";
     const path = `cache/swatches/${color.slice(1)}.png`;
-    return { color, path, absolutePath: `/preview/plugin-data/${path}` };
+    return { color, path };
   },
   [failOnPurpose.name]: (data) => {
     throw new GalleryDemoError((data as { reason: string }).reason);

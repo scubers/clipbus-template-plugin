@@ -44,12 +44,8 @@ test('gallery.renderSwatch draws the requested color into the plugin cache', asy
 
   const swatch = await registry.messages['gallery.renderSwatch']({ color: '#1A2B3C' }, fakeHost(launch).ctx);
 
-  assert.deepEqual(swatch, {
-    color: '#1a2b3c',
-    path: 'cache/swatches/1a2b3c.png',
-    absolutePath: path.join(launch.dirs.cache, 'swatches', '1a2b3c.png'),
-  });
-  const png = decodeRgbPng(fs.readFileSync(swatch.absolutePath));
+  assert.deepEqual(swatch, { color: '#1a2b3c', path: 'cache/swatches/1a2b3c.png' });
+  const png = decodeRgbPng(fs.readFileSync(path.join(launch.dirs.cache, 'swatches', '1a2b3c.png')));
   assert.deepEqual(png.colors, ['#1a2b3c']);
 });
 
@@ -84,13 +80,12 @@ test('each runtime probe exercises the runtime method it is named after', async 
     'item.setPinned': ['item.get', 'item.setPinned'],
     'input.imagePath': ['input.imagePath'],
     'system.copyText': ['system.copyText'],
-    'system.openUrl': ['system.openUrl'],
-    'system.openPath': ['system.openPath'],
     'system.reveal': ['system.reveal'],
     'env.get': ['env.get'],
     'settings.get': ['settings.get'],
     'log.write': ['log.write', 'log.write'],
     'plugin.path': [],
+    'plugin.folder': [],
     'capabilities.has': [],
   };
   for (const [name, methods] of Object.entries(expected)) {
@@ -137,14 +132,12 @@ test('the setAttachments probe counts on from this plugin\'s own counter', async
   ]);
 });
 
-test('the openPath and reveal probes hand the Host an existing absolute path', async t => {
+test('the reveal probe hands the Host the plugin-relative path of the swatch it drew', async t => {
   const { registry, launch } = await setupPlugin(t);
-  for (const name of ['system.openPath', 'system.reveal']) {
-    const host = fakeHost(launch);
-    await probe(registry, host, name);
-    const [{ path: target }] = host.paramsOf(name);
-    assert.ok(path.isAbsolute(target) && fs.existsSync(target), name);
-  }
+  const host = fakeHost(launch);
+  await probe(registry, host, 'system.reveal');
+  assert.deepEqual(host.paramsOf('system.reveal'), [{ path: 'cache/swatches/f97316.png' }]);
+  assert.ok(fs.existsSync(path.join(launch.dirs.cache, 'swatches', 'f97316.png')));
 });
 
 test('the plugin.path and capabilities.has probes answer from the launch context', async t => {
@@ -156,6 +149,75 @@ test('the plugin.path and capabilities.has probes answer from the launch context
 
   const capabilities = await probe(registry, fakeHost(launch), 'capabilities.has');
   assert.deepEqual(capabilities.result, { 'input.imagePath': true, 'system.reveal': false, 'renderer.update': false });
+});
+
+test('the folder probe exports a swatch only into the folder the user granted', async t => {
+  const { registry, launch } = await setupPlugin(t);
+
+  const missing = await probe(registry, fakeHost(launch), 'plugin.folder');
+  assert.deepEqual(missing.result, { folder: 'exports', granted: false });
+
+  const folder = path.join(launch.scratch, 'exports');
+  fs.mkdirSync(folder);
+  const granted = { ...launch, grants: { folders: { exports: folder } } };
+  const host = fakeHost(granted);
+  const answer = await probe(registry, host, 'plugin.folder');
+  const exported = path.join(folder, '22c55e.png');
+  assert.deepEqual(answer.result, { folder: 'exports', granted: true, exported });
+  assert.deepEqual(decodeRgbPng(fs.readFileSync(exported)).colors, ['#22c55e']);
+  assert.deepEqual(host.paramsOf('system.reveal'), [{ path: exported }]);
+});
+
+// ── gallery.runtimeLimit ─────────────────────────────────────────────────────
+
+const tryLimit = (registry, host, limit) => registry.messages['gallery.runtimeLimit']({ limit }, host.ctx);
+
+/** Replace `object[key]` for one test. */
+function stub(t, object, key, value) {
+  const original = object[key];
+  object[key] = value;
+  t.after(() => { object[key] = original; });
+}
+
+test('each limit answers refused with the error a plugin gets when the attempt fails', async t => {
+  const { registry, launch } = await setupPlugin(t);
+  // Plays what Clipbus does to these attempts: tests run outside its sandbox.
+  stub(t, globalThis, 'fetch', async () => {
+    throw new TypeError('fetch failed', { cause: Object.assign(new Error('getaddrinfo ENOTFOUND clipbus.app'), { code: 'ENOTFOUND' }) });
+  });
+  stub(t, require('node:child_process'), 'spawnSync', () => {
+    throw Object.assign(new Error('Clipbus plugins cannot start other programs.'), { code: 'ERR_ACCESS_DENIED' });
+  });
+  stub(t, require('node:os'), 'homedir', () => path.join(launch.scratch, 'unreadable-home'));
+  const confined = { ...launch, dirs: { ...launch.dirs, root: path.join(launch.scratch, 'read-only-package') } };
+  const host = fakeHost(confined, {
+    'system.reveal': () => { throw Object.assign(new Error('The resource was rejected.'), { name: 'PluginResourceRejected' }); },
+  });
+
+  const answers = {};
+  for (const limit of ['network', 'startProgram', 'readHome', 'writePackage', 'revealOutside']) {
+    answers[limit] = await tryLimit(registry, host, limit);
+    assert.equal(answers[limit].limit, limit);
+    assert.equal(answers[limit].outcome, 'refused', limit);
+  }
+  assert.equal(answers.network.error, 'ENOTFOUND: getaddrinfo ENOTFOUND clipbus.app');
+  assert.equal(answers.startProgram.error, 'ERR_ACCESS_DENIED: Clipbus plugins cannot start other programs.');
+  assert.match(answers.readHome.error, /^ENOENT: /);
+  assert.match(answers.writePackage.error, /^ENOENT: /);
+  assert.equal(answers.revealOutside.error, 'PluginResourceRejected: The resource was rejected.');
+});
+
+test('a limit the environment does not enforce answers allowed', async t => {
+  const { registry, launch } = await setupPlugin(t);
+  stub(t, globalThis, 'fetch', async () => new Response('ok'));
+  assert.deepEqual(await tryLimit(registry, fakeHost(launch), 'network'), {
+    limit: 'network', attempt: 'fetch https://clipbus.app/', outcome: 'allowed',
+  });
+});
+
+test('an unknown limit is refused', async t => {
+  const { registry, launch } = await setupPlugin(t);
+  await assert.rejects(tryLimit(registry, fakeHost(launch), 'readEverything'), RangeError);
 });
 
 test('an unknown probe is refused', async t => {

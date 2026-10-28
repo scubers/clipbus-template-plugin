@@ -98,6 +98,14 @@ test('install hook directly executes a host-provided npm shim', {
   ]);
 });
 
+test('install hook installs exactly the lockfile when there is one', (t) => {
+  const fixture = makeFixture(t);
+  fs.writeFileSync(path.join(fixture.root, 'package-lock.json'), '{}');
+
+  assert.equal(runInstallHook(fixture).status, 0);
+  assert.deepEqual(readCalls(fixture.logPath).map(call => call.args), [['ci'], ['run', 'build']]);
+});
+
 test('install hook does not build when dependency installation fails', (t) => {
   const fixture = makeFixture(t);
 

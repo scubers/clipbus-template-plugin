@@ -4,7 +4,7 @@
 
 > 写新插件先看 [GUIDE_zh.md](./GUIDE_zh.md)。它和本工程一起就是开发 Clipbus 插件的完整起步资料。
 
-`template-plugin/` 是给三方插件作者和 AI 助手准备的**最小全功能**模板工程，基于插件协议 V2（manifest `schemaVersion` 5）与 SDK 包 `@clipbus/plugin-sdk` 1.x，演示全部扩展点：detector、卡片页（renderer）、Action，以及卡片页与插件 runtime 之间的 typed 消息。
+`template-plugin/` 是给三方插件作者和 AI 助手准备的**最小全功能**模板工程，基于插件协议 V2（manifest `schemaVersion` 6）与对应的 SDK 包 `@clipbus/plugin-sdk`，演示全部扩展点：detector、卡片页（renderer）、Action，以及卡片页与插件 runtime 之间的 typed 消息。
 
 > **安装 hook：**manifest 声明了 `install` 时，Clipbus 会先请你确认再执行。Clipbus 通过 `CLIPBUS_PLUGIN_NPM_PATH` 提供已验证的 npm command 或 CLI：本模板用当前 Node 运行 JavaScript CLI，其他由宿主提供的 npm executable/shim 则直接执行；绝不 fallback 到 PATH 中的 `npm`。详见 [GUIDE_zh.md](./GUIDE_zh.md)。
 
@@ -33,7 +33,7 @@
 
 ```text
 template-plugin/
-├── manifest.json                       ← schemaVersion 5：detectors、renderers、actions
+├── manifest.json                       ← schemaVersion 6：detectors、renderers、actions
 ├── package.json                        ← 依赖 @clipbus/plugin-sdk
 ├── scripts/
 │   ├── build-runtime.mjs               ← src/plugin.ts → runtime.nodeEntry（dist/plugin.cjs）

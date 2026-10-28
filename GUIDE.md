@@ -20,7 +20,7 @@ This project (`plugins/template-plugin/`) is the **scaffold and runnable example
 ### Prerequisites
 
 - Use the latest Node.js 22 patch release (matching CI) or a newer compatible version for development and tests: the tests use `node --test` with glob patterns and `zlib.crc32`. The lower Node.js minimum under `engines.node` in `package.json` does not cover the development toolchain.
-- Clipbus with plugin protocol V2 (manifest `schemaVersion` 5) and `@clipbus/plugin-sdk` 1.x. Use the installed SDK's docs and `API.md` for the exact API.
+- Clipbus with plugin protocol V2 (manifest `schemaVersion` 6) and the matching `@clipbus/plugin-sdk`. Use the installed SDK's docs and `API.md` for the exact API.
 
 ### Initialize
 
@@ -61,7 +61,7 @@ Clipbus → Settings → Plugins manages development plugins (labels below are t
 2. If `manifest.json` declares an `install` field, Clipbus asks for your confirmation before running it, with the working directory set to `sourceRootPath`. Artifacts such as `node_modules/` land in the project directory (equivalent to running `npm install` yourself).
 3. Install logs are written to `<AppData>/development-plugins/<pluginID>/install-logs/` and will not pollute your git status.
 
-> **npm in the install hook:** Clipbus supplies a verified npm command or CLI through `CLIPBUS_PLUGIN_NPM_PATH`. The template resolves symlinks, runs JavaScript CLI files as `process.execPath <npm-cli> ...`, and directly executes other host-provided npm executables or shims. It deliberately has no `npm` PATH fallback; when the variable is missing or unusable, the install fails.
+> **npm in the install hook:** Clipbus supplies a verified npm command or CLI through `CLIPBUS_PLUGIN_NPM_PATH`. The template resolves symlinks, runs JavaScript CLI files as `process.execPath <npm-cli> ...`, and directly executes other host-provided npm executables or shims. It deliberately has no `npm` PATH fallback; when the variable is missing or unusable, the install fails. The install hook uses the machine's npm configuration and cache; Clipbus sets `npm_config_ignore_scripts=true`, so dependency packages' own install scripts (`postinstall` and the like) do not run, while `npm run build` does. With a `package-lock.json` the template uses `npm ci`, installing exactly the versions and checksums the lockfile pins.
 
 Each development plugin row has an **Actions** menu:
 
@@ -86,7 +86,7 @@ Load states:
 | `conflict` | An enabled installed plugin already uses the same `plugin.id`. |
 | `ready` | Usable. |
 
-Plugins written for manifest schema v4 show as `requiresUpdate` until they are migrated to v5 and rebuilt; there is no compatibility layer. For this template the migration meant: `attachmentRenderers` became `renderers` with a `page` path relative to the plugin root (no `runtime.uiRoot`), `height` became `{ min, max }` with optional `tint` and `buttons` defaults, `supportedInputKinds` became `inputKinds` (text and image only), `permissions` went away, detector `attachmentTypes` became the plugin-wide `writes` list (every attachment type and search scope the plugin writes), detectors write through `ctx` instead of returning artifacts, and card pages moved from `clipbus.*` to `ctx` from `@clipbus/plugin-sdk/view`. The SDK docs list the full mapping.
+Plugins written for an earlier manifest schema show as `requiresUpdate` until they are migrated to v6 and rebuilt; there is no compatibility layer. From v5 to v6, `install` lost its `runtime` field (the install script always runs with Node), `ctx.system.openPath` went away, `ctx.system.openUrl` is for card pages and takes `http`, `https` or `mailto` URLs, and `ctx.system.reveal` takes a file inside the plugin. v6 also added `permissions.folders`: the runtime has no network and cannot start other programs, and reaches a folder of the user's only through a declared slot the user picks a folder for (the gallery's `exports` slot). Earlier, from v4 to v5, the template's migration meant: `attachmentRenderers` became `renderers` with a `page` path relative to the plugin root (no `runtime.uiRoot`), `height` became `{ min, max }` with optional `tint` and `buttons` defaults, `supportedInputKinds` became `inputKinds` (text and image only), `permissions` went away, detector `attachmentTypes` became the plugin-wide `writes` list (every attachment type and search scope the plugin writes), detectors write through `ctx` instead of returning artifacts, and card pages moved from `clipbus.*` to `ctx` from `@clipbus/plugin-sdk/view`. The SDK docs list the full mapping.
 
 ### Production build
 

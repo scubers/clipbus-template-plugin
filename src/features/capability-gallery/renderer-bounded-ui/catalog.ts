@@ -13,8 +13,11 @@ import {
   GALLERY_COUNTER_KEY,
   GALLERY_NOTE_SCOPE,
   galleryCounter,
+  LIMIT_URL,
   renderSwatch,
+  RUNTIME_LIMITS,
   RUNTIME_PROBES,
+  runtimeLimit,
   runtimeProbe,
 } from "../contracts";
 
@@ -43,9 +46,19 @@ async function bumpCounter() {
   return payload;
 }
 
-/** system.openPath and system.reveal need an existing absolute path: let the runtime draw a swatch. */
+/** system.reveal needs a file inside the plugin: let the runtime draw a swatch. */
 async function swatchPath(): Promise<string> {
-  return (await renderSwatch.call({ color: "#0ea5e9" })).absolutePath;
+  return (await renderSwatch.call({ color: "#0ea5e9" })).path;
+}
+
+/** Resolves when the image loads, rejects when it cannot. */
+function loadImage(src: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(`loaded ${image.naturalWidth}×${image.naturalHeight}`);
+    image.onerror = () => reject(new Error(`could not load ${src}`));
+    image.src = src;
+  });
 }
 
 function button(id: string, label: string, signature: string, invoke: () => Promise<unknown>): CapabilityButton {
@@ -93,14 +106,13 @@ export const capabilitySections: CapabilitySection[] = [
   {
     id: "system",
     title: "System",
-    description: "Side effects run at once. openPath and reveal take an existing absolute path; the runtime draws a swatch for them.",
+    description: "Side effects run at once. openUrl is for card pages and takes http, https or mailto; reveal takes a file inside the plugin, so the runtime draws a swatch for it.",
     buttons: [
       button("system-copyText", "copyText", "ctx.system.copyText({ text })", () =>
         ctx.system.copyText({ text: `Gallery demo @ ${new Date().toLocaleTimeString()}` })),
       button("system-openUrl", "openUrl", "ctx.system.openUrl({ url })", () => ctx.system.openUrl({ url: "https://clipbus.app/" })),
-      button("system-openPath", "openPath(swatch)", "ctx.system.openPath({ path })", async () => ctx.system.openPath({ path: await swatchPath() })),
       button("system-reveal", "reveal(swatch)", "ctx.system.reveal({ path })", async () => ctx.system.reveal({ path: await swatchPath() })),
-      button("system-openUrl-blocked", "openUrl(file:)", "rejected: blocked scheme", () => ctx.system.openUrl({ url: "file:///etc/hosts" })),
+      button("system-openUrl-refused", "openUrl(file:)", "rejected: scheme not allowed", () => ctx.system.openUrl({ url: "file:///etc/hosts" })),
     ],
   },
   {
@@ -154,6 +166,17 @@ export const capabilitySections: CapabilitySection[] = [
       button("message-fail", "fail on purpose", "failOnPurpose.call({ reason })", () => failOnPurpose.call({ reason: "demo" })),
       button("message-missing", "unknown message", "ctx.runtime.call({ name, data })", () =>
         ctx.runtime.call({ name: "gallery.missing", data: null })),
+    ],
+  },
+  {
+    id: "limits",
+    title: "Limits (expected to fail)",
+    description: "What a plugin cannot do. Card pages and the runtime have no network; the runtime cannot start other programs and reaches only its own directories and the folders the user chose. Page buttons fail with the error a page gets; runtime buttons answer how the attempt ended.",
+    buttons: [
+      button("limit-page-fetch", "page: fetch", `fetch("${LIMIT_URL}")`, () => fetch(LIMIT_URL)),
+      button("limit-page-image", "page: remote <img>", `<img src="${LIMIT_URL}favicon.ico">`, () => loadImage(`${LIMIT_URL}favicon.ico`)),
+      ...RUNTIME_LIMITS.map((limit) =>
+        button(`limit-${limit}`, `runtime: ${limit}`, `runtimeLimit.call({ limit: "${limit}" })`, () => runtimeLimit.call({ limit }))),
     ],
   },
   {

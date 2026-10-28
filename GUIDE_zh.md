@@ -20,7 +20,7 @@
 ### 前置条件
 
 - 开发与测试使用 Node.js 22 的最新补丁版本（与 CI 一致）或更新的兼容版本：测试使用带 glob 的 `node --test` 和 `zlib.crc32`。`package.json` 中 `engines.node` 声明的较低下限不覆盖开发工具链。
-- 支持插件协议 V2（manifest `schemaVersion` 5）的 Clipbus，与 `@clipbus/plugin-sdk` 1.x。具体 API 以已安装 SDK 的文档和 `API.md` 为准。
+- 支持插件协议 V2（manifest `schemaVersion` 6）的 Clipbus，与对应的 `@clipbus/plugin-sdk`。具体 API 以已安装 SDK 的文档和 `API.md` 为准。
 
 ### 初始化
 
@@ -61,7 +61,7 @@ Clipbus → 设置 → 插件 负责管理开发插件（以下按钮名以 macO
 2. 若 `manifest.json` 声明了 `install` 字段，Clipbus 会先请你确认，再执行安装脚本；工作目录为 `sourceRootPath`。`node_modules/` 等产物落到工程目录（等价于你手动 `npm install`）。
 3. 安装日志写入 `<AppData>/development-plugins/<pluginID>/install-logs/`，不会污染你的 git status。
 
-> **安装 hook 里的 npm：**Clipbus 通过 `CLIPBUS_PLUGIN_NPM_PATH` 提供已验证的 npm command 或 CLI。本模板解析 symlink 后，用 `process.execPath <npm-cli> ...` 运行 JavaScript CLI，其他由宿主提供的 npm executable/shim 则直接执行；刻意不提供 `npm` PATH fallback。变量缺失或路径不可用时，安装失败。
+> **安装 hook 里的 npm：**Clipbus 通过 `CLIPBUS_PLUGIN_NPM_PATH` 提供已验证的 npm command 或 CLI。本模板解析 symlink 后，用 `process.execPath <npm-cli> ...` 运行 JavaScript CLI，其他由宿主提供的 npm executable/shim 则直接执行；刻意不提供 `npm` PATH fallback。变量缺失或路径不可用时，安装失败。安装脚本使用本机的 npm 配置与缓存；Clipbus 设置了 `npm_config_ignore_scripts=true`，依赖包自带的安装脚本（`postinstall` 等）不会运行，`npm run build` 照常。本模板有 `package-lock.json` 时用 `npm ci`，按 lockfile 锁定的版本与校验值安装。
 
 每个开发插件行都有 **操作** 菜单：
 
@@ -86,7 +86,7 @@ Clipbus → 设置 → 插件 负责管理开发插件（以下按钮名以 macO
 | `conflict` | 已有启用中的已安装插件使用相同的 `plugin.id`。 |
 | `ready` | 可用。 |
 
-为 manifest schema v4 编写的插件在迁移到 v5 并重新构建之前一直显示为 `requiresUpdate`，没有兼容层。本模板的迁移包括：`attachmentRenderers` 改为 `renderers`，页面路径 `page` 相对插件根目录（不再有 `runtime.uiRoot`）；`height` 改为 `{ min, max }`，并可声明 `tint`、`buttons` 默认值；`supportedInputKinds` 改为 `inputKinds`（只有 text 和 image）；去掉 `permissions`，detector 的 `attachmentTypes` 改为插件级的 `writes` 声明（插件会写的全部附件类型与搜索 scope）；detector 通过 `ctx` 写入而不是返回 artifact；卡片页从 `clipbus.*` 改用 `@clipbus/plugin-sdk/view` 的 `ctx`。完整对照见 SDK 文档。
+为旧版 manifest schema 编写的插件在迁移到 v6 并重新构建之前一直显示为 `requiresUpdate`，没有兼容层。从 v5 到 v6：`install` 去掉了 `runtime` 字段（安装脚本总是用 Node 运行），`ctx.system.openPath` 被删除，`ctx.system.openUrl` 只在卡片页可用且只接受 `http`、`https`、`mailto`，`ctx.system.reveal` 只接受插件自己目录里的文件。v6 还加了 `permissions.folders`：Runtime 不能联网、不能启动其他程序，用户的文件夹只能经声明的槽位、由用户选择后才能读写（gallery 的 `exports` 槽位）。更早从 v4 到 v5，本模板的迁移包括：`attachmentRenderers` 改为 `renderers`，页面路径 `page` 相对插件根目录（不再有 `runtime.uiRoot`）；`height` 改为 `{ min, max }`，并可声明 `tint`、`buttons` 默认值；`supportedInputKinds` 改为 `inputKinds`（只有 text 和 image）；去掉 `permissions`，detector 的 `attachmentTypes` 改为插件级的 `writes` 声明（插件会写的全部附件类型与搜索 scope）；detector 通过 `ctx` 写入而不是返回 artifact；卡片页从 `clipbus.*` 改用 `@clipbus/plugin-sdk/view` 的 `ctx`。完整对照见 SDK 文档。
 
 ### 生产构建
 

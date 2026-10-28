@@ -1,7 +1,16 @@
 // Gallery message handlers, registered in definePlugin({ messages }).
 
 import type { PluginRuntimeCtx } from "@clipbus/plugin-sdk/runtime";
-import { failOnPurpose, GALLERY_ERROR_NAME, renderSwatch, RUNTIME_PROBES, runtimeProbe } from "../contracts";
+import {
+  failOnPurpose,
+  GALLERY_ERROR_NAME,
+  renderSwatch,
+  RUNTIME_LIMITS,
+  RUNTIME_PROBES,
+  runtimeLimit,
+  runtimeProbe,
+} from "../contracts";
+import { tryLimit } from "./limits";
 import { runProbe } from "./probes";
 import { randomHexColor, writeSwatch } from "./swatch";
 
@@ -25,6 +34,13 @@ export const galleryMessages = [
       throw new RangeError(`Unknown probe "${String(probe)}"`);
     }
     return { probe, result: (await runProbe(probe, ctx)) ?? null };
+  }),
+  runtimeLimit.handle(async (request, ctx: PluginRuntimeCtx) => {
+    const limit = request?.limit;
+    if (!(RUNTIME_LIMITS as readonly string[]).includes(limit)) {
+      throw new RangeError(`Unknown limit "${String(limit)}"`);
+    }
+    return tryLimit(limit, ctx);
   }),
   renderSwatch.handle(async (request, ctx: PluginRuntimeCtx) => writeSwatch(ctx, request?.color ?? randomHexColor())),
   failOnPurpose.handle(async ({ reason }) => {

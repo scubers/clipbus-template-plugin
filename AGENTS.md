@@ -1,6 +1,6 @@
 # AGENTS.md — 给 AI 与编码工具的入口指引
 
-本工程（`@clipbus/template-plugin`）是 Clipbus 三方插件的**脚手架与可运行示例**，基于插件协议 V2（manifest `schemaVersion` 5）与 `@clipbus/plugin-sdk` 1.x。
+本工程（`@clipbus/template-plugin`）是 Clipbus 三方插件的**脚手架与可运行示例**，基于插件协议 V2（manifest `schemaVersion` 6）与对应的 `@clipbus/plugin-sdk`。
 
 ## 权威开发知识在 SDK 包内，不在本工程
 
