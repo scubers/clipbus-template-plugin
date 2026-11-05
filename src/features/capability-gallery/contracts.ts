@@ -58,6 +58,7 @@ export const RUNTIME_PROBES = [
   "item.setPinned",
   "input.imagePath",
   "system.copyText",
+  "system.playSound",
   "system.reveal",
   "env.get",
   "settings.get",

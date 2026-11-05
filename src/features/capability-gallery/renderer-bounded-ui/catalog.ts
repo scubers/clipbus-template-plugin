@@ -8,6 +8,7 @@
 
 import { ctx } from "@clipbus/plugin-sdk/view";
 import type { PluginMethodName } from "@clipbus/plugin-sdk";
+import { playCopiedSound } from "../../../shared/sound";
 import {
   failOnPurpose,
   GALLERY_COUNTER_KEY,
@@ -111,6 +112,7 @@ export const capabilitySections: CapabilitySection[] = [
       button("system-copyText", "copyText", "ctx.system.copyText({ text })", () =>
         ctx.system.copyText({ text: `Gallery demo @ ${new Date().toLocaleTimeString()}` })),
       button("system-openUrl", "openUrl", "ctx.system.openUrl({ url })", () => ctx.system.openUrl({ url: "https://clipbus.app/" })),
+      button("system-playSound", "Play sound", "ctx.system.playSound({ path })", () => playCopiedSound(ctx)),
       button("system-reveal", "reveal(swatch)", "ctx.system.reveal({ path })", async () => ctx.system.reveal({ path: await swatchPath() })),
       button("system-openUrl-refused", "openUrl(file:)", "rejected: scheme not allowed", () => ctx.system.openUrl({ url: "file:///etc/hosts" })),
     ],

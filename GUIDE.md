@@ -160,3 +160,7 @@ Keep files that both the runtime and the pages import free of Node and DOM APIs;
 ## Next steps
 
 That's all for the scaffold workflow. **All the knowledge for implementing a plugin lives in the SDK docs** — see the root [`AGENTS.md`](./AGENTS.md), or open `node_modules/@clipbus/plugin-sdk/docs/README.md` (documentation map) and `node_modules/@clipbus/plugin-sdk/API.md` (API reference) directly.
+
+## Short sound example
+
+After copying text or an image in Clipbus, click **Play sound** in the first preview card's header; the gallery also has a page button and Runtime probe. Browser preview only records calls. The shared helper in `src/shared/sound.ts` treats a busy slot as a normal skip; automatic playback is off by default. See the [README sound example](README.md#short-sound-example) for an optional copy/recopy detector, and SDK `docs/files.md` for Host formats and limits.

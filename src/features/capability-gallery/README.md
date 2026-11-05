@@ -42,7 +42,7 @@ capability-gallery/
 | `ctx.item.setAttachments` | bounded · Item writes (counter + 1, clear); `galleryCounter.set(ctx, …)` |
 | `ctx.item.setSearchExtension` | bounded · Item writes (note, clear) |
 | `ctx.item.addTags` / `removeTags` / `setTags` / `setPinned` | bounded · Item writes |
-| `ctx.system.copyText` / `openUrl` / `reveal` | bounded · System (plus a refused `file:` URL) |
+| `ctx.system.copyText` / `openUrl` / `reveal` / `playSound` | bounded · System (plus a refused `file:` URL); sound also appears on the first preview card |
 | `ctx.renderer.update` — `title`, `tint`, `buttons`, `height`, `null` | bounded · Card appearance; card buttons Expand / Compact / AutoFit |
 | `ctx.renderer.context(contract)` | every page through `useCard`; bounded · Startup snapshot |
 | `ctx.runtime.call` / `contract.call` | bounded · Messages and Runtime probes; ImagePanel; expanded sample (Analyze) |
@@ -150,3 +150,5 @@ chose.
    one is the main stage: click buttons and watch the log and the Host events.
 4. The Action menu lists *Gallery Auto (text / image / none)*, one per result
    kind.
+
+`system.playSound` is available as **System → Play sound** and a Runtime probe; the first template preview card also has a **Play sound** header button. All use `src/shared/sound.ts` and the bundled `sounds/copied.wav`, returning `started`, `busy` (skipped, no retry) or `unsupported`. Other errors remain visible. Browser preview only records calls, without sound or rate limiting. The root README includes an optional copy/recopy detector example.

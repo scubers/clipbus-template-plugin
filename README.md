@@ -76,7 +76,7 @@ Inside the Clipbus monorepo the project also carries `scripts/export.mjs`, `test
 
 ### card page, fixed height — `template-renderer`
 
-- Files: `src/features/preview-renderer/{payload.ts,app.vue}`; manifest `height: { min: 220, max: 220 }`, `tint`, two default `buttons`
+- Files: `src/features/preview-renderer/{payload.ts,app.vue}`; manifest `height: { min: 220, max: 220 }`, `tint`, default `buttons`
 - `useCard(previewAttachment)` reads the startup snapshot (`ctx.renderer.context`) and follows `item.changed` / `env.changed`; the buttons arrive through `ctx.renderer.onButton` and copy with `ctx.system.copyText`.
 - The card title comes from the attachment card the detector wrote; it overrides the manifest title.
 - **Convention:** pages do not draw the outer background, border, radius or shadow; the Host and the preview draw the card shell. Theme tokens are also available as `--clipbus-*` CSS variables.
@@ -123,3 +123,32 @@ npm run verify    # manifest validation, build, runtime manifest validation, the
 ```
 
 For the scaffold workflow in detail, see [GUIDE.md](./GUIDE.md).
+
+## Short sound example
+
+Enable the template in Clipbus, copy text or an image, then click **Play sound** in the first preview card's header (`template-renderer`). The gallery's **System → Play sound** button and Runtime probe also play the bundled `sounds/copied.wav`. Browser preview only records calls and makes no sound.
+
+All three entries share `playCopiedSound(ctx)` in [`src/shared/sound.ts`](src/shared/sound.ts), returning `started`, `busy` or `unsupported`. A busy slot is skipped without retrying or aborting a detector's other work; resource and other errors still propagate. See the SDK `docs/files.md` for Host formats and limits.
+
+### Opt in to playback after copy
+
+The template does not play automatically. To play on copy / recopy, import the helper in `src/plugin.ts` and add this member to its existing `detectors`:
+
+```ts
+import { playCopiedSound } from "./shared/sound";
+
+// Inside definePlugin({ detectors: { ... } }):
+"copy-sound": async ({ trigger }, ctx) => {
+  if (trigger === "copy" || trigger === "recopy") {
+    await playCopiedSound(ctx);
+  }
+},
+```
+
+Add its matching declaration to the manifest's `detectors` array:
+
+```json
+{ "id": "copy-sound", "title": "Copy sound", "inputKinds": ["text", "image"] }
+```
+
+This separate detector writes no attachments and leaves other detectors' outputs alone; edit/manual triggers stay silent. Plugins compete for one app-wide sound slot without a fixed winner. A delayed request may play after cooldown, so rate limiting does not deduplicate a copy event.

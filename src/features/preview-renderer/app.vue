@@ -23,7 +23,7 @@
       </dl>
 
       <p class="preview-panel__hint">
-        {{ tagsHint }} Use the card buttons to copy the payload or the card context.
+        {{ tagsHint }} Use the card buttons to copy data or play a sound. Browser preview only logs sound calls.
       </p>
     </section>
 
@@ -39,6 +39,7 @@ import { computed } from "vue";
 import { ctx } from "@clipbus/plugin-sdk/view";
 import { useCard, useCardButton } from "../../shared/composables/useCard";
 import { formatJSON, type DisplayFact } from "../../shared/display";
+import { playCopiedSound } from "../../shared/sound";
 import { isPreviewPayload, previewAttachment } from "./payload";
 
 // The startup snapshot, kept current by item.changed / env.changed.
@@ -62,6 +63,9 @@ useCardButton("copy-payload", () => ctx.system.copyText({ text: formatJSON(attac
 useCardButton("copy-context", () =>
   ctx.system.copyText({ text: formatJSON({ item: item.value, attachment: attachment.value }) }),
 );
+useCardButton("play-sound", async () => {
+  ctx.log.info("Sound example", await playCopiedSound(ctx));
+});
 </script>
 
 <style scoped>

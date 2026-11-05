@@ -160,3 +160,7 @@ runtime 与页面都会 import 的文件不要用 Node 或 DOM API；runtime bun
 ## 接下来
 
 脚手架工作流就这些。**插件实现的全部知识在 SDK 文档**——见根目录 [`AGENTS.md`](./AGENTS.md)，或直接打开 `node_modules/@clipbus/plugin-sdk/docs/README.md`（文档地图）与 `node_modules/@clipbus/plugin-sdk/API.md`（API 参考）。
+
+## 短提示音示例
+
+在 Clipbus 中复制文本或图片后，点击首张预览卡片头部的 **Play sound**；能力画廊也有页面按钮和 Runtime 探针。浏览器预览只记调用、不发声。共享 helper 位于 `src/shared/sound.ts`，忙时正常跳过；默认不在 copy 后自动播放。可选 copy/recopy detector 的接入片段见 [README_zh.md 的短提示音示例](README_zh.md#短提示音示例)，宿主格式与额度以 SDK 的 `docs/files.md` 为准。

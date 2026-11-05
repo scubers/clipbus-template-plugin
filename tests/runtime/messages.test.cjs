@@ -140,6 +140,40 @@ test('the reveal probe hands the Host the plugin-relative path of the swatch it 
   assert.ok(fs.existsSync(path.join(launch.dirs.cache, 'swatches', 'f97316.png')));
 });
 
+test('the sound example requests one packaged sound when supported', async t => {
+  const { registry, launch } = await setupPlugin(t, ['system.playSound']);
+  const host = fakeHost(launch);
+  const answer = await probe(registry, host, 'system.playSound');
+  assert.equal(answer.result, 'started');
+  assert.deepEqual(host.methods(), ['system.playSound']);
+  const [{ path: sound }] = host.paramsOf('system.playSound');
+  assert.ok(sound.startsWith('package/'));
+  assert.ok(fs.statSync(path.join(launch.dirs.root, sound.slice('package/'.length))).isFile());
+});
+
+test('the sound example skips an unsupported Host without calling it', async t => {
+  const { registry, launch } = await setupPlugin(t);
+  const host = fakeHost(launch);
+  assert.equal((await probe(registry, host, 'system.playSound')).result, 'unsupported');
+  assert.deepEqual(host.methods(), []);
+});
+
+test('the sound example skips a busy shared slot without retrying or failing the handler', async t => {
+  const { registry, launch } = await setupPlugin(t, ['system.playSound']);
+  const host = fakeHost(launch, {
+    'system.playSound': () => { throw Object.assign(new Error('busy'), { name: 'PluginLimitExceeded' }); },
+  });
+  assert.equal((await probe(registry, host, 'system.playSound')).result, 'busy');
+  assert.deepEqual(host.methods(), ['system.playSound']);
+});
+
+test('the sound example preserves resource errors for the author to fix', async t => {
+  const { registry, launch } = await setupPlugin(t, ['system.playSound']);
+  const rejected = Object.assign(new Error('invalid sound'), { name: 'PluginResourceRejected' });
+  const host = fakeHost(launch, { 'system.playSound': () => { throw rejected; } });
+  await assert.rejects(probe(registry, host, 'system.playSound'), error => error === rejected);
+});
+
 test('the plugin.path and capabilities.has probes answer from the launch context', async t => {
   const { registry, launch } = await setupPlugin(t, ['input.imagePath']);
 

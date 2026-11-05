@@ -7,6 +7,7 @@ import { copyFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import type { PluginMethodName } from "@clipbus/plugin-sdk";
 import type { PluginRuntimeCtx } from "@clipbus/plugin-sdk/runtime";
+import { playCopiedSound } from "../../../shared/sound";
 import {
   EXPORT_FOLDER,
   GALLERY_COUNTER_KEY,
@@ -62,6 +63,8 @@ export async function runProbe(probe: RuntimeProbe, ctx: PluginRuntimeCtx): Prom
     case "system.copyText":
       await ctx.system.copyText({ text: "Copied by the gallery runtime" });
       return { copied: true };
+    case "system.playSound":
+      return playCopiedSound(ctx);
     case "system.reveal": {
       const swatch = await writeSwatch(ctx, "#f97316");
       await ctx.system.reveal({ path: swatch.path });

@@ -76,7 +76,7 @@ template-plugin/
 
 ### 卡片页，固定高度 —— `template-renderer`
 
-- 文件：`src/features/preview-renderer/{payload.ts,app.vue}`；manifest `height: { min: 220, max: 220 }`、`tint`、两个默认 `buttons`
+- 文件：`src/features/preview-renderer/{payload.ts,app.vue}`；manifest `height: { min: 220, max: 220 }`、`tint`、默认 `buttons`
 - `useCard(previewAttachment)` 读取启动快照（`ctx.renderer.context`）并跟随 `item.changed` / `env.changed`；按钮经 `ctx.renderer.onButton` 到达，用 `ctx.system.copyText` 复制。
 - 卡片标题来自 detector 写入的附件 card，覆盖 manifest 标题。
 - **约定**：页面不自绘最外层 background、border、圆角或阴影，卡片框由宿主和预览统一绘制。主题 token 也以 `--clipbus-*` CSS 变量提供。
@@ -123,3 +123,32 @@ npm run verify    # manifest 校验、构建、runtime manifest 校验，最后�
 ```
 
 脚手架工作流详见 [GUIDE_zh.md](./GUIDE_zh.md)。
+
+## 短提示音示例
+
+在 Clipbus 中启用模板后，复制一段文本或一张图片，点击首张预览卡片（`template-renderer`）头部的 **Play sound**。能力画廊的 **System → Play sound** 和 Runtime 探针也能试播。浏览器预览只记录调用、不发声；真实声音使用插件自带的 `sounds/copied.wav`。
+
+三个入口共用 [`src/shared/sound.ts`](src/shared/sound.ts) 的 `playCopiedSound(ctx)`，返回 `started`、`busy` 或 `unsupported`。忙时跳过，不重试、不让 `PluginLimitExceeded` 中断 detector 的其他工作；资源等其他错误仍抛出。宿主格式和额度见 SDK 的 `docs/files.md`。
+
+### 按需改成复制后播放
+
+模板默认不自动发声。如需 copy / recopy 时播放，在 `src/plugin.ts` 导入 helper，并向已有的 `detectors` 添加：
+
+```ts
+import { playCopiedSound } from "./shared/sound";
+
+// definePlugin({ detectors: { ... } }) 内：
+"copy-sound": async ({ trigger }, ctx) => {
+  if (trigger === "copy" || trigger === "recopy") {
+    await playCopiedSound(ctx);
+  }
+},
+```
+
+同时在 `manifest.json` 的 `detectors` 数组添加对应声明：
+
+```json
+{ "id": "copy-sound", "title": "Copy sound", "inputKinds": ["text", "image"] }
+```
+
+独立 detector 不写附件，不会清掉其他 detector 的产出；`edit` 和 `manual` 不播放。多个插件竞争的是全 App 的声音槽，先到者不固定；延迟到达的请求若已过冷却仍可能播放，因此限流不等于“同一次复制只响一次”。

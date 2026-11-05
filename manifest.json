@@ -33,7 +33,8 @@
       "tint": "#0F766E",
       "buttons": [
         { "id": "copy-payload", "title": "Copy Payload JSON" },
-        { "id": "copy-context", "title": "Copy Card Context" }
+        { "id": "copy-context", "title": "Copy Card Context" },
+        { "id": "play-sound", "title": "Play sound" }
       ]
     },
     {
