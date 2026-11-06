@@ -29,7 +29,7 @@
       "title": "Template Preview",
       "attachmentType": "plugin.template.full.preview",
       "page": "dist/ui/renderers/template-renderer/index.html",
-      "height": { "min": 220, "max": 220 },
+      "height": { "min": 260, "max": 260 },
       "tint": "#0F766E",
       "buttons": [
         { "id": "copy-payload", "title": "Copy Payload JSON" },

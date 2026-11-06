@@ -76,7 +76,7 @@ template-plugin/
 
 ### 卡片页，固定高度 —— `template-renderer`
 
-- 文件：`src/features/preview-renderer/{payload.ts,app.vue}`；manifest `height: { min: 220, max: 220 }`、`tint`、默认 `buttons`
+- 文件：`src/features/preview-renderer/{payload.ts,app.vue}`；manifest `height: { min: 260, max: 260 }`、`tint`、默认 `buttons`
 - `useCard(previewAttachment)` 读取启动快照（`ctx.renderer.context`）并跟随 `item.changed` / `env.changed`；按钮经 `ctx.renderer.onButton` 到达，用 `ctx.system.copyText` 复制。
 - 卡片标题来自 detector 写入的附件 card，覆盖 manifest 标题。
 - **约定**：页面不自绘最外层 background、border、圆角或阴影，卡片框由宿主和预览统一绘制。主题 token 也以 `--clipbus-*` CSS 变量提供。
@@ -126,7 +126,11 @@ npm run verify    # manifest 校验、构建、runtime manifest 校验，最后�
 
 ## 短提示音示例
 
-在 Clipbus 中启用模板后，复制一段文本或一张图片，点击首张预览卡片（`template-renderer`）头部的 **Play sound**。能力画廊的 **System → Play sound** 和 Runtime 探针也能试播。浏览器预览只记录调用、不发声；真实声音使用插件自带的 `sounds/copied.wav`。
+在 Clipbus 中启用模板后，复制一段文本或一张图片，点击首张预览卡片（`template-renderer`）头部的 **Play sound**。能力画廊的 **System → Play sound** 和 Runtime 探针也能试播。浏览器预览只记录调用、不发声；真实声音使用插件自带的 `sounds/copied.wav`、`sounds/copied.mp3` 或 `sounds/copied.aiff`。
+
+首张预览卡片和能力画廊的 **System** 区都有 **Format** 选择框（WAV / MP3 / AIFF，初始为 WAV）和 **Volume** 滑块（0–100%，默认 100%）。同插件卡片通过 localStorage 记住并共享格式和音量；Runtime 声音探针会接收画廊当前选择。detector 等 Runtime 调用也可显式使用 `playCopiedSound(ctx, 50, "mp3")`。
+
+支持扩展声音契约的 macOS 和 Windows 宿主也接受 MP3、PCM16 AIFF。例如 `ctx.system.playSound({ path: "package/sounds/copied.wav", volume: 50 })`，可用整数百分比 `0–100` 调整本次声音，省略为 `100`；时长限制和全 App 限流保持一致。模板仍默认 WAV 以兼容旧宿主，独立导出会带齐三种文件；参考文件及生成命令见 [sounds/README.md](sounds/README.md)。
 
 三个入口共用 [`src/shared/sound.ts`](src/shared/sound.ts) 的 `playCopiedSound(ctx)`，返回 `started`、`busy` 或 `unsupported`。忙时跳过，不重试、不让 `PluginLimitExceeded` 中断 detector 的其他工作；资源等其他错误仍抛出。宿主格式和额度见 SDK 的 `docs/files.md`。
 

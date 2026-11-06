@@ -12,6 +12,7 @@
         <span class="capability-board__section-desc">{{ section.description }}</span>
       </summary>
       <div class="capability-board__buttons">
+        <slot :name="section.id" />
         <button
           v-for="button in section.buttons"
           :key="button.id"

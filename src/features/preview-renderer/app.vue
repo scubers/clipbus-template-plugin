@@ -22,6 +22,8 @@
         </div>
       </dl>
 
+      <SoundPlaybackControls v-model:volume="soundVolume" v-model:format="soundFormat" />
+
       <p class="preview-panel__hint">
         {{ tagsHint }} Use the card buttons to copy data or play a sound. Browser preview only logs sound calls.
       </p>
@@ -40,10 +42,13 @@ import { ctx } from "@clipbus/plugin-sdk/view";
 import { useCard, useCardButton } from "../../shared/composables/useCard";
 import { formatJSON, type DisplayFact } from "../../shared/display";
 import { playCopiedSound } from "../../shared/sound";
+import { useSoundPlayback } from "../../shared/composables/useSoundPlayback";
+import SoundPlaybackControls from "../../shared/SoundPlaybackControls.vue";
 import { isPreviewPayload, previewAttachment } from "./payload";
 
 // The startup snapshot, kept current by item.changed / env.changed.
 const { item, attachment } = useCard(previewAttachment);
+const { volume: soundVolume, format: soundFormat } = useSoundPlayback();
 
 const payload = computed(() => (isPreviewPayload(attachment.value.payload) ? attachment.value.payload : null));
 
@@ -64,7 +69,7 @@ useCardButton("copy-context", () =>
   ctx.system.copyText({ text: formatJSON({ item: item.value, attachment: attachment.value }) }),
 );
 useCardButton("play-sound", async () => {
-  ctx.log.info("Sound example", await playCopiedSound(ctx));
+  ctx.log.info("Sound example", await playCopiedSound(ctx, soundVolume.value, soundFormat.value));
 });
 </script>
 

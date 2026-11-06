@@ -33,7 +33,7 @@ export const galleryMessages = [
     if (!(RUNTIME_PROBES as readonly string[]).includes(probe)) {
       throw new RangeError(`Unknown probe "${String(probe)}"`);
     }
-    return { probe, result: (await runProbe(probe, ctx)) ?? null };
+    return { probe, result: (await runProbe(probe, ctx, request.volume, request.format)) ?? null };
   }),
   runtimeLimit.handle(async (request, ctx: PluginRuntimeCtx) => {
     const limit = request?.limit;

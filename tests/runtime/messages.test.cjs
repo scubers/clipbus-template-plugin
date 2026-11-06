@@ -146,9 +146,27 @@ test('the sound example requests one packaged sound when supported', async t => 
   const answer = await probe(registry, host, 'system.playSound');
   assert.equal(answer.result, 'started');
   assert.deepEqual(host.methods(), ['system.playSound']);
-  const [{ path: sound }] = host.paramsOf('system.playSound');
+  const [{ path: sound, volume }] = host.paramsOf('system.playSound');
+  assert.equal(volume, 100);
   assert.ok(sound.startsWith('package/'));
   assert.ok(fs.statSync(path.join(launch.dirs.root, sound.slice('package/'.length))).isFile());
+});
+
+test('the sound runtime probe forwards the selected format and volume, including mute', async t => {
+  const { registry, launch } = await setupPlugin(t, ['system.playSound']);
+  for (const [format, volume] of [['wav', 0], ['mp3', 27], ['aiff', 100]]) {
+    const host = fakeHost(launch);
+    const answer = await registry.messages['gallery.runtimeProbe']({ probe: 'system.playSound', volume, format }, host.ctx);
+    assert.equal(answer.result, 'started');
+    assert.deepEqual(host.paramsOf('system.playSound'), [{ path: `package/sounds/copied.${format}`, volume }]);
+  }
+});
+
+test('the sound runtime probe refuses an unknown format before requesting playback', async t => {
+  const { registry, launch } = await setupPlugin(t, ['system.playSound']);
+  const host = fakeHost(launch);
+  await assert.rejects(registry.messages['gallery.runtimeProbe']({ probe: 'system.playSound', format: '../outside' }, host.ctx), RangeError);
+  assert.deepEqual(host.methods(), []);
 });
 
 test('the sound example skips an unsupported Host without calling it', async t => {

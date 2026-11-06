@@ -2,6 +2,7 @@
 // types with their payloads, and the typed messages pages send to the runtime.
 
 import { defineAttachment, defineMessage, type PluginContentKind } from "@clipbus/plugin-sdk";
+import type { SoundFormat } from "../../shared/sound";
 
 // ── Attachments ──────────────────────────────────────────────────────────────
 
@@ -79,7 +80,7 @@ export interface RuntimeProbeResult {
 }
 
 /** Run one runtime ctx method in a message call and return what it answered. */
-export const runtimeProbe = defineMessage<{ probe: RuntimeProbe }, RuntimeProbeResult>("gallery.runtimeProbe");
+export const runtimeProbe = defineMessage<{ probe: RuntimeProbe; volume?: number; format?: SoundFormat }, RuntimeProbeResult>("gallery.runtimeProbe");
 
 export interface SwatchRequest {
   /** `#RRGGBB`; a random color when omitted. */

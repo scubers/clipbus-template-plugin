@@ -76,7 +76,7 @@ Inside the Clipbus monorepo the project also carries `scripts/export.mjs`, `test
 
 ### card page, fixed height — `template-renderer`
 
-- Files: `src/features/preview-renderer/{payload.ts,app.vue}`; manifest `height: { min: 220, max: 220 }`, `tint`, default `buttons`
+- Files: `src/features/preview-renderer/{payload.ts,app.vue}`; manifest `height: { min: 260, max: 260 }`, `tint`, default `buttons`
 - `useCard(previewAttachment)` reads the startup snapshot (`ctx.renderer.context`) and follows `item.changed` / `env.changed`; the buttons arrive through `ctx.renderer.onButton` and copy with `ctx.system.copyText`.
 - The card title comes from the attachment card the detector wrote; it overrides the manifest title.
 - **Convention:** pages do not draw the outer background, border, radius or shadow; the Host and the preview draw the card shell. Theme tokens are also available as `--clipbus-*` CSS variables.
@@ -126,9 +126,13 @@ For the scaffold workflow in detail, see [GUIDE.md](./GUIDE.md).
 
 ## Short sound example
 
-Enable the template in Clipbus, copy text or an image, then click **Play sound** in the first preview card's header (`template-renderer`). The gallery's **System → Play sound** button and Runtime probe also play the bundled `sounds/copied.wav`. Browser preview only records calls and makes no sound.
+Enable the template in Clipbus, copy text or an image, then click **Play sound** in the first preview card's header (`template-renderer`). The gallery's **System → Play sound** button and Runtime probe play the selected bundled reference: `sounds/copied.wav`, `sounds/copied.mp3` or `sounds/copied.aiff`. Browser preview only records calls and makes no sound.
+
+The first preview card and **System** section include a **Format** selector (WAV / MP3 / AIFF, initially WAV) and a **Volume** slider (0–100%, default 100%). Card pages remember and share both choices in this plugin’s localStorage; the sound Runtime probe receives the gallery’s current format and volume. The shared helper also accepts explicit volume and format arguments, `playCopiedSound(ctx, 50, "mp3")`, for a detector or other Runtime caller.
 
 All three entries share `playCopiedSound(ctx)` in [`src/shared/sound.ts`](src/shared/sound.ts), returning `started`, `busy` or `unsupported`. A busy slot is skipped without retrying or aborting a detector's other work; resource and other errors still propagate. See the SDK `docs/files.md` for Host formats and limits.
+
+Hosts supporting the expanded sound contract also accept MP3 and PCM16 AIFF on macOS and Windows. For a quieter bundled sound, call `ctx.system.playSound({ path: "package/sounds/copied.wav", volume: 50 })`; the optional volume is an integer percentage from 0 to 100 (default 100). The same short-duration and app-wide rate limits apply. WAV stays the default for compatibility with older Hosts. All three files are included in standalone exports; see [sounds/README.md](sounds/README.md) for the references and conversion commands.
 
 ### Opt in to playback after copy
 

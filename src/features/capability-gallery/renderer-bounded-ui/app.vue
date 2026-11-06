@@ -12,7 +12,11 @@
 
       <EventMonitor :item="item" :env="env" />
 
-      <CapabilityBoard :sections="capabilitySections" :on-invoke="invoke" />
+      <CapabilityBoard :sections="capabilitySections" :on-invoke="invoke">
+        <template #system>
+          <SoundPlaybackControls v-model:volume="soundVolume" v-model:format="soundFormat" />
+        </template>
+      </CapabilityBoard>
 
       <ImagePanel :item-kind="item.kind" @log="pushEntry" />
 
@@ -30,7 +34,9 @@ import { autoFit } from "@clipbus/plugin-sdk/dom";
 import type { PluginButton } from "@clipbus/plugin-sdk";
 import { useCard, useCardButton } from "../../../shared/composables/useCard";
 import { galleryCards } from "../contracts";
-import { capabilitySections, type CapabilityButton } from "./catalog";
+import { createCapabilitySections, type CapabilityButton } from "./catalog";
+import { useSoundPlayback } from "../../../shared/composables/useSoundPlayback";
+import SoundPlaybackControls from "../../../shared/SoundPlaybackControls.vue";
 import { describeError, timestamp, type LogEntry } from "./log";
 import CapabilityBoard from "./components/CapabilityBoard.vue";
 import EventMonitor from "./components/EventMonitor.vue";
@@ -41,6 +47,8 @@ import TextInputProbe from "./components/TextInputProbe.vue";
 const MAX_ENTRIES = 50;
 
 const { item, env, attachment } = useCard(galleryCards.bounded);
+const { volume: soundVolume, format: soundFormat } = useSoundPlayback();
+const capabilitySections = createCapabilitySections(() => soundVolume.value, () => soundFormat.value);
 const entries = ref<LogEntry[]>([]);
 
 function pushEntry(entry: LogEntry): void {

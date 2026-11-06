@@ -8,7 +8,7 @@
 
 import { ctx } from "@clipbus/plugin-sdk/view";
 import type { PluginMethodName } from "@clipbus/plugin-sdk";
-import { playCopiedSound } from "../../../shared/sound";
+import { playCopiedSound, type SoundFormat } from "../../../shared/sound";
 import {
   failOnPurpose,
   GALLERY_COUNTER_KEY,
@@ -66,7 +66,7 @@ function button(id: string, label: string, signature: string, invoke: () => Prom
   return { id, label, signature, invoke };
 }
 
-export const capabilitySections: CapabilitySection[] = [
+export const createCapabilitySections = (volume: () => number, format: () => SoundFormat): CapabilitySection[] => [
   {
     id: "item-read",
     title: "Item reads",
@@ -112,7 +112,7 @@ export const capabilitySections: CapabilitySection[] = [
       button("system-copyText", "copyText", "ctx.system.copyText({ text })", () =>
         ctx.system.copyText({ text: `Gallery demo @ ${new Date().toLocaleTimeString()}` })),
       button("system-openUrl", "openUrl", "ctx.system.openUrl({ url })", () => ctx.system.openUrl({ url: "https://clipbus.app/" })),
-      button("system-playSound", "Play sound", "ctx.system.playSound({ path })", () => playCopiedSound(ctx)),
+      button("system-playSound", "Play sound", "ctx.system.playSound({ path, volume })", () => playCopiedSound(ctx, volume(), format())),
       button("system-reveal", "reveal(swatch)", "ctx.system.reveal({ path })", async () => ctx.system.reveal({ path: await swatchPath() })),
       button("system-openUrl-refused", "openUrl(file:)", "rejected: scheme not allowed", () => ctx.system.openUrl({ url: "file:///etc/hosts" })),
     ],
@@ -186,6 +186,7 @@ export const capabilitySections: CapabilitySection[] = [
     title: "Runtime probes",
     description: "runtimeProbe.call({ probe }): the runtime ctx runs one method inside a message call; writes commit when the handler returns.",
     buttons: RUNTIME_PROBES.map((probe) =>
-      button(`probe-${probe}`, probe, `runtime: ctx.${probe}`, () => runtimeProbe.call({ probe }))),
+      button(`probe-${probe}`, probe, `runtime: ctx.${probe}`, () =>
+        runtimeProbe.call({ probe, ...(probe === "system.playSound" ? { volume: volume(), format: format() } : {}) }))),
   },
 ];

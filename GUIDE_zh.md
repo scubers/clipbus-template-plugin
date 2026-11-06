@@ -163,4 +163,4 @@ runtime 与页面都会 import 的文件不要用 Node 或 DOM API；runtime bun
 
 ## 短提示音示例
 
-在 Clipbus 中复制文本或图片后，点击首张预览卡片头部的 **Play sound**；能力画廊也有页面按钮和 Runtime 探针。浏览器预览只记调用、不发声。共享 helper 位于 `src/shared/sound.ts`，忙时正常跳过；默认不在 copy 后自动播放。可选 copy/recopy detector 的接入片段见 [README_zh.md 的短提示音示例](README_zh.md#短提示音示例)，宿主格式与额度以 SDK 的 `docs/files.md` 为准。
+在 Clipbus 中复制文本或图片后，点击首张预览卡片头部的 **Play sound**；能力画廊也有页面按钮和 Runtime 探针。首张卡片和画廊 **System** 区可选 **Format**（WAV / MP3 / AIFF）和 **Volume**，也会传给 Runtime 声音探针；卡片本地记住这两项设置。`sounds/` 中的三份真实参考文件都会随独立导出分发。浏览器预览只记调用、不发声。共享 helper 位于 `src/shared/sound.ts`，忙时正常跳过；默认不在 copy 后自动播放。可选 copy/recopy detector 的接入片段见 [README_zh.md 的短提示音示例](README_zh.md#短提示音示例)，宿主格式与额度以 SDK 的 `docs/files.md` 为准。
