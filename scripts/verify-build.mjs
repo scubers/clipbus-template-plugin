@@ -35,14 +35,14 @@ function launchContext() {
   };
 }
 
-function compareHandlers(kind, declared, registered) {
+function compareHandlers(kind, declared, registered, entry = manifest.runtime.nodeEntry) {
   const declaredIds = (declared ?? []).map((entry) => entry.id);
   const registeredIds = Object.keys(registered ?? {});
   for (const id of declaredIds.filter((id) => !registeredIds.includes(id))) {
-    problems.push(`manifest ${kind} "${id}" has no handler in ${manifest.runtime.nodeEntry}`);
+    problems.push(`manifest ${kind} "${id}" has no handler in ${entry}`);
   }
   for (const id of registeredIds.filter((id) => !declaredIds.includes(id))) {
-    problems.push(`${manifest.runtime.nodeEntry} registers ${kind} "${id}", which manifest.json does not declare`);
+    problems.push(`${entry} registers ${kind} "${id}", which manifest.json does not declare`);
   }
 }
 
@@ -57,6 +57,19 @@ if (manifest.runtime?.nodeEntry !== undefined) {
   } else {
     compareHandlers("detectors", manifest.detectors, registry.detectors);
     compareHandlers("actions", manifest.actions, registry.actions);
+  }
+}
+
+if (manifest.runtime?.taskEntry !== undefined) {
+  const require = createRequire(import.meta.url);
+  const exported = require(path.join(projectRoot, manifest.runtime.taskEntry));
+  const plugin = exported.default ?? exported;
+  const registry = typeof plugin?.setup === "function"
+    ? await plugin.setup({ ...launchContext(), role: "task" }) : plugin;
+  if (!registry || typeof registry !== "object") {
+    problems.push(manifest.runtime.taskEntry + " does not export definePlugin(...)");
+  } else {
+    compareHandlers("tasks", manifest.tasks, registry.tasks, manifest.runtime.taskEntry);
   }
 }
 

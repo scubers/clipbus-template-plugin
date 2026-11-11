@@ -11,7 +11,7 @@ const PREVIEW = 'plugin.template.full.preview';
 const EXPANDED = 'plugin.template.full.expanded';
 
 function writesOf(host, type) {
-  return host.paramsOf('item.setAttachments').find(params => params.type === type);
+  return host.paramsOf('item.replaceAttachments').find(params => params.type === type);
 }
 
 async function detect(registry, host, { kind = 'text', content, trigger = 'copy' }) {
@@ -39,12 +39,12 @@ test('template-detector stores a preview with a card title, the expanded view an
   assert.equal('card' in expanded.entries[0], false);
   assert.equal(expanded.entries[0].payload.excerpt, text);
 
-  assert.deepEqual(host.paramsOf('item.setSearchExtension'), [
+  assert.deepEqual(host.paramsOf('item.replaceSearchExtension'), [
     { scope: 'template', entries: [{ key: 'primary', text: entry.payload.searchText, label: 'Text' }] },
   ]);
   assert.match(entry.payload.searchText, /Hello world/);
   // Plain text gets no tag, and text never needs the image file.
-  assert.deepEqual(host.methods().sort(), ['item.setAttachments', 'item.setAttachments', 'item.setSearchExtension']);
+  assert.deepEqual(host.methods().sort(), ['item.replaceAttachments', 'item.replaceAttachments', 'item.replaceSearchExtension']);
 });
 
 test('template-detector cuts a long headline between characters, not inside an emoji', async t => {
@@ -109,7 +109,7 @@ test('template-detector on recopy writes back its stored output instead of recom
   // Entries without card keep the stored card.
   assert.deepEqual(writesOf(host, PREVIEW).entries, [{ key: 'primary', payload: storedPreview }]);
   assert.deepEqual(writesOf(host, EXPANDED).entries, [{ key: 'expanded', payload: storedExpanded }]);
-  assert.deepEqual(host.paramsOf('item.setSearchExtension'), [
+  assert.deepEqual(host.paramsOf('item.replaceSearchExtension'), [
     { scope: 'template', entries: [{ key: 'primary', text: 'stored search text', label: 'PNG image' }] },
   ]);
 });
@@ -138,7 +138,7 @@ test('gallery-detector writes the same three cards and search entries on every r
   };
 
   const copy = await run('copy');
-  const writes = copy.paramsOf('item.setAttachments');
+  const writes = copy.paramsOf('item.replaceAttachments');
   assert.deepEqual(writes.map(params => params.type).sort(), [
     'plugin.template.full.gallery.auto',
     'plugin.template.full.gallery.bounded',
@@ -153,7 +153,7 @@ test('gallery-detector writes the same three cards and search entries on every r
     // No card: a title or buttons the page wrote back survive re-detection.
     assert.equal('card' in entries[0], false);
   }
-  const [search] = copy.paramsOf('item.setSearchExtension');
+  const [search] = copy.paramsOf('item.replaceSearchExtension');
   assert.equal(search.scope, 'gallery');
   assert.deepEqual(search.entries.map(entry => entry.key).sort(), ['auto', 'bounded', 'fixed']);
 

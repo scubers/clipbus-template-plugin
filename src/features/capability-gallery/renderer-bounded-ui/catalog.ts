@@ -7,6 +7,7 @@
 // detector, so re-detection leaves them alone.
 
 import { ctx } from "@clipbus/plugin-sdk/view";
+import { copyOriginalRichText, RICH_TEXT_SAMPLE } from "../rich-text";
 import type { PluginMethodName } from "@clipbus/plugin-sdk";
 import { playCopiedSound, type SoundFormat } from "../../../shared/sound";
 import {
@@ -43,7 +44,7 @@ const CHECKED_CAPABILITIES: PluginMethodName[] = ["renderer.update", "runtime.ca
 async function bumpCounter() {
   const [stored] = (await galleryCounter.get(ctx, { key: GALLERY_COUNTER_KEY })).filter((attachment) => attachment.own);
   const payload = { count: (stored?.payload.count ?? 0) + 1, writer: "page" as const };
-  await galleryCounter.set(ctx, [{ key: GALLERY_COUNTER_KEY, payload }]);
+  await galleryCounter.replace(ctx, [{ key: GALLERY_COUNTER_KEY, payload }]);
   return payload;
 }
 
@@ -74,6 +75,7 @@ export const createCapabilitySections = (volume: () => number, format: () => Sou
     buttons: [
       button("item-get", "get()", "ctx.item.get()", () => ctx.item.get()),
       button("item-getContent", "getContent()", "ctx.item.getContent()", () => ctx.item.getContent()),
+      button("item-getRichText", "getRichText()", "ctx.item.getRichText()", () => ctx.item.getRichText()),
       button("item-getAttachments", "getAttachments()", "ctx.item.getAttachments({ type?, key? })", () => ctx.item.getAttachments()),
     ],
   },
@@ -82,15 +84,15 @@ export const createCapabilitySections = (volume: () => number, format: () => Sou
     title: "Item writes",
     description: "Commit at once and come back as item.changed. The counter type has no renderer, so it never shows as a card.",
     buttons: [
-      button("item-setAttachments", "setAttachments(counter + 1)", "galleryCounter.set(ctx, entries)", bumpCounter),
-      button("item-setAttachments-clear", "setAttachments([])", "galleryCounter.set(ctx, [])", () => galleryCounter.set(ctx, [])),
-      button("item-setSearchExtension", "setSearchExtension(note)", "ctx.item.setSearchExtension({ scope, entries })", () =>
-        ctx.item.setSearchExtension({
+      button("item-replaceAttachments", "replaceAttachments(counter + 1)", "galleryCounter.replace(ctx, entries)", bumpCounter),
+      button("item-replaceAttachments-clear", "replaceAttachments([])", "galleryCounter.replace(ctx, [])", () => galleryCounter.replace(ctx, [])),
+      button("item-replaceSearchExtension", "replaceSearchExtension(note)", "ctx.item.replaceSearchExtension({ scope, entries })", () =>
+        ctx.item.replaceSearchExtension({
           scope: GALLERY_NOTE_SCOPE,
           entries: [{ key: "page", text: "gallery note written by the page", label: "Gallery" }],
         })),
-      button("item-setSearchExtension-clear", "setSearchExtension([])", "ctx.item.setSearchExtension({ scope, entries: [] })", () =>
-        ctx.item.setSearchExtension({ scope: GALLERY_NOTE_SCOPE, entries: [] })),
+      button("item-replaceSearchExtension-clear", "replaceSearchExtension([])", "ctx.item.replaceSearchExtension({ scope, entries: [] })", () =>
+        ctx.item.replaceSearchExtension({ scope: GALLERY_NOTE_SCOPE, entries: [] })),
       button("item-addTags", `addTags(${PAGE_TAG})`, "ctx.item.addTags({ tags })", () => ctx.item.addTags({ tags: [PAGE_TAG] })),
       button("item-removeTags", `removeTags(${PAGE_TAG})`, "ctx.item.removeTags({ tags })", () => ctx.item.removeTags({ tags: [PAGE_TAG] })),
       button("item-setTags", "setTags(keep user tags)", "ctx.item.setTags({ tags })", async () => {
@@ -111,6 +113,10 @@ export const createCapabilitySections = (volume: () => number, format: () => Sou
     buttons: [
       button("system-copyText", "copyText", "ctx.system.copyText({ text })", () =>
         ctx.system.copyText({ text: `Gallery demo @ ${new Date().toLocaleTimeString()}` })),
+      button("system-copyRichText", "Copy rich-text sample", "ctx.system.copyRichText({ text, richText })", () =>
+        ctx.system.copyRichText(RICH_TEXT_SAMPLE)),
+      button("system-copyOriginalRichText", "Copy saved rich text", "item.getRichText() → system.copyRichText()", () =>
+        copyOriginalRichText(ctx)),
       button("system-openUrl", "openUrl", "ctx.system.openUrl({ url })", () => ctx.system.openUrl({ url: "https://clipbus.app/" })),
       button("system-playSound", "Play sound", "ctx.system.playSound({ path, volume })", () => playCopiedSound(ctx, volume(), format())),
       button("system-reveal", "reveal(swatch)", "ctx.system.reveal({ path })", async () => ctx.system.reveal({ path: await swatchPath() })),

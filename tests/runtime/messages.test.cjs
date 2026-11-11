@@ -66,14 +66,37 @@ test('gallery.fail throws an error with its own name and data', async t => {
 
 const probe = (registry, host, name) => registry.messages['gallery.runtimeProbe']({ probe: name }, host.ctx);
 
+test('rich-text sample sends HTML and original RTF to the native copy operation', async t => {
+  const { registry, launch } = await setupPlugin(t);
+  const host = fakeHost(launch);
+  await probe(registry, host, 'system.copyRichText');
+  const [copied] = host.paramsOf('system.copyRichText');
+  assert.equal(copied.text, 'Clipbus rich text\nBold and blue');
+  assert.match(copied.richText.html.document, /<strong>Bold<\/strong>/);
+  const rtf = Buffer.from(copied.richText.rtfBase64, 'base64').toString('ascii');
+  assert.ok(rtf.startsWith('{\\rtf1'));
+  assert.ok(rtf.includes('\\b Bold\\b0'));
+});
+
+test('saved rich-text probe copies every original representation without converting it', async t => {
+  const { registry, launch } = await setupPlugin(t);
+  const original = { html: { document: '<b>saved</b>' }, rtfBase64: Buffer.from('{\\rtf1 saved}').toString('base64') };
+  const host = fakeHost(launch, { 'item.getContent': textContent('saved'), 'item.getRichText': { richText: original } });
+  await probe(registry, host, 'system.copyRichText.original');
+  assert.deepEqual(host.paramsOf('system.copyRichText'), [{ text: 'saved', richText: original }]);
+  const plain = fakeHost(launch, { 'item.getContent': textContent('plain'), 'item.getRichText': { richText: null } });
+  await assert.rejects(probe(registry, plain, 'system.copyRichText.original'), /no saved HTML or RTF/);
+  assert.deepEqual(plain.paramsOf('system.copyRichText'), []);
+});
+
 test('each runtime probe exercises the runtime method it is named after', async t => {
   const { registry, launch } = await setupPlugin(t);
   const expected = {
     'item.get': ['item.get'],
     'item.getContent': ['item.getContent'],
     'item.getAttachments': ['item.getAttachments'],
-    'item.setAttachments': ['item.getAttachments', 'item.setAttachments'],
-    'item.setSearchExtension': ['item.setSearchExtension'],
+    'item.replaceAttachments': ['item.getAttachments', 'item.replaceAttachments'],
+    'item.replaceSearchExtension': ['item.replaceSearchExtension'],
     'item.addTags': ['item.addTags'],
     'item.removeTags': ['item.removeTags'],
     'item.setTags': ['item.get', 'item.setTags'],
@@ -113,7 +136,7 @@ test('the setTags probe keeps the user tags and the setPinned probe toggles', as
   assert.deepEqual(pin.paramsOf('item.setPinned'), [{ pinned: false }]);
 });
 
-test('the setAttachments probe counts on from this plugin\'s own counter', async t => {
+test('the replaceAttachments probe counts on from this plugin\'s own counter', async t => {
   const { registry, launch } = await setupPlugin(t);
   const host = fakeHost(launch, {
     'item.getAttachments': ({ type, key }) => ({
@@ -124,10 +147,10 @@ test('the setAttachments probe counts on from this plugin\'s own counter', async
     }),
   });
 
-  const answer = await probe(registry, host, 'item.setAttachments');
+  const answer = await probe(registry, host, 'item.replaceAttachments');
 
   assert.deepEqual(answer.result, { count: 3, writer: 'runtime' });
-  assert.deepEqual(host.paramsOf('item.setAttachments'), [
+  assert.deepEqual(host.paramsOf('item.replaceAttachments'), [
     { type: 'plugin.template.full.gallery.counter', entries: [{ key: 'clicks', payload: { count: 3, writer: 'runtime' } }] },
   ]);
 });

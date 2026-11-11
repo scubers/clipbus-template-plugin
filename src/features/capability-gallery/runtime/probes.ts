@@ -17,6 +17,7 @@ import {
   type RuntimeProbe,
 } from "../contracts";
 import { writeSwatch } from "./swatch";
+import { copyOriginalRichText, RICH_TEXT_SAMPLE } from "../rich-text";
 
 export const PROBE_TAG = "gallery-runtime";
 
@@ -25,7 +26,7 @@ const PROBED_CAPABILITIES: PluginMethodName[] = ["input.imagePath", "system.reve
 async function bumpCounter(ctx: PluginRuntimeCtx) {
   const [stored] = (await galleryCounter.get(ctx, { key: GALLERY_COUNTER_KEY })).filter((attachment) => attachment.own);
   const payload = { count: (stored?.payload.count ?? 0) + 1, writer: "runtime" as const };
-  await galleryCounter.set(ctx, [{ key: GALLERY_COUNTER_KEY, payload }]);
+  await galleryCounter.replace(ctx, [{ key: GALLERY_COUNTER_KEY, payload }]);
   return payload;
 }
 
@@ -37,10 +38,10 @@ export async function runProbe(probe: RuntimeProbe, ctx: PluginRuntimeCtx, volum
       return ctx.item.getContent();
     case "item.getAttachments":
       return ctx.item.getAttachments({ type: galleryCards.bounded.type });
-    case "item.setAttachments":
+    case "item.replaceAttachments":
       return bumpCounter(ctx);
-    case "item.setSearchExtension":
-      await ctx.item.setSearchExtension({
+    case "item.replaceSearchExtension":
+      await ctx.item.replaceSearchExtension({
         scope: GALLERY_NOTE_SCOPE,
         entries: [{ key: "runtime", text: "gallery note written by the runtime", label: "Gallery" }],
       });
@@ -63,6 +64,13 @@ export async function runProbe(probe: RuntimeProbe, ctx: PluginRuntimeCtx, volum
     case "system.copyText":
       await ctx.system.copyText({ text: "Copied by the gallery runtime" });
       return { copied: true };
+    case "item.getRichText":
+      return ctx.item.getRichText();
+    case "system.copyRichText":
+      await ctx.system.copyRichText(RICH_TEXT_SAMPLE);
+      return { copied: true };
+    case "system.copyRichText.original":
+      return copyOriginalRichText(ctx);
     case "system.playSound":
       return playCopiedSound(ctx, volume, format);
     case "system.reveal": {

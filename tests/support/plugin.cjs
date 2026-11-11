@@ -60,6 +60,8 @@ function fakeHost(launch, answers = {}) {
   const ctx = {
     item: domain('item'),
     input: domain('input'),
+    tasks: domain('tasks'),
+    http: domain('http'),
     system: domain('system'),
     env: domain('env'),
     settings: domain('settings'),

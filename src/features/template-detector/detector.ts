@@ -1,10 +1,8 @@
 // template-detector: runs after every copy, edit and manual re-detection.
 //
-// A detector returns nothing; it writes through ctx. When it returns, the Host
-// replaces everything this detector wrote on the item last time with what it
-// wrote this time, so a run that writes nothing clears its earlier output.
-// The Host also drops writes equal to what is stored, so re-writing the same
-// values costs nothing and sends no item.changed.
+// The Host clears old detector results before a full detection. Each call only
+// replaces the attachment types and search scopes it explicitly writes.
+// Unchanged group writes are skipped and do not send item.changed.
 
 import type { DetectorHandler, PluginRuntimeCtx } from "@clipbus/plugin-sdk/runtime";
 import { contentSha256 } from "../../shared/digest";
@@ -41,7 +39,7 @@ function searchEntries(payload: TemplatePreviewPayload) {
 /**
  * `recopy` means Core matched an existing item: the content is the one this
  * detector already saw. Instead of hashing it again, write back what is
- * stored — writing nothing would clear it. Entries without `card` keep the
+ * stored, including the matching search projection. Entries without `card` keep the
  * stored card. Returns false when there is nothing to reuse yet.
  */
 async function reuseStoredOutput(ctx: PluginRuntimeCtx): Promise<boolean> {
@@ -55,9 +53,9 @@ async function reuseStoredOutput(ctx: PluginRuntimeCtx): Promise<boolean> {
     return false;
   }
   await Promise.all([
-    previewAttachment.set(ctx, [{ key: PREVIEW_KEY, payload: preview.payload }]),
-    expandedAttachment.set(ctx, [{ key: EXPANDED_KEY, payload: expanded.payload }]),
-    ctx.item.setSearchExtension({ scope: TEMPLATE_SEARCH_SCOPE, entries: searchEntries(preview.payload) }),
+    previewAttachment.replace(ctx, [{ key: PREVIEW_KEY, payload: preview.payload }]),
+    expandedAttachment.replace(ctx, [{ key: EXPANDED_KEY, payload: expanded.payload }]),
+    ctx.item.replaceSearchExtension({ scope: TEMPLATE_SEARCH_SCOPE, entries: searchEntries(preview.payload) }),
   ]);
   return true;
 }
@@ -74,9 +72,9 @@ export const detectTemplate: DetectorHandler = async ({ content, trigger }, ctx)
   // Up to 8 ctx calls may run at once in one invocation; the Host commits the
   // staged writes together after the handler returns.
   const writes: Promise<unknown>[] = [
-    previewAttachment.set(ctx, [{ key: PREVIEW_KEY, payload: preview, card: { title: previewCardTitle(preview) } }]),
-    expandedAttachment.set(ctx, [{ key: EXPANDED_KEY, payload: createExpandedPayload(content) }]),
-    ctx.item.setSearchExtension({ scope: TEMPLATE_SEARCH_SCOPE, entries: searchEntries(preview) }),
+    previewAttachment.replace(ctx, [{ key: PREVIEW_KEY, payload: preview, card: { title: previewCardTitle(preview) } }]),
+    expandedAttachment.replace(ctx, [{ key: EXPANDED_KEY, payload: createExpandedPayload(content) }]),
+    ctx.item.replaceSearchExtension({ scope: TEMPLATE_SEARCH_SCOPE, entries: searchEntries(preview) }),
   ];
   if (content.kind === "text" && looksLikeJson(content.text)) {
     writes.push(ctx.item.addTags({ tags: [JSON_TAG] }));

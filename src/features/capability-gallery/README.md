@@ -39,8 +39,8 @@ capability-gallery/
 | Capability | Where |
 |---|---|
 | `ctx.item.get` / `getContent` / `getAttachments` | bounded · Item reads |
-| `ctx.item.setAttachments` | bounded · Item writes (counter + 1, clear); `galleryCounter.set(ctx, …)` |
-| `ctx.item.setSearchExtension` | bounded · Item writes (note, clear) |
+| `ctx.item.replaceAttachments` | bounded · Item writes (counter + 1, clear); `galleryCounter.replace(ctx, …)` |
+| `ctx.item.replaceSearchExtension` | bounded · Item writes (note, clear) |
 | `ctx.item.addTags` / `removeTags` / `setTags` / `setPinned` | bounded · Item writes |
 | `ctx.system.copyText` / `openUrl` / `reveal` / `playSound` | bounded · System (plus a refused `file:` URL); sound also appears on the first preview card |
 | `ctx.renderer.update` — `title`, `tint`, `buttons`, `height`, `null` | bounded · Card appearance; card buttons Expand / Compact / AutoFit |

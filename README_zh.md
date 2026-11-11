@@ -70,8 +70,10 @@ template-plugin/
 
 - 文件：`src/features/template-detector/detector.ts`；`inputKinds`：`text`、`image`
 - 通过 `ctx` 写入：带卡片标题（`Text · 3 lines`）的预览附件、展开附件、一条搜索扩展，以及给能解析为 JSON 的文本加 `json` 标签。处理函数不返回值。
-- 处理函数返回后，宿主用本次写入整组替换这个 detector 上一次的产出，并跳过与现值相同的写入。一次什么都不写的运行会清掉它的产出。
-- 每次复制都会检测。`trigger` 说明原因：`copy`、`recopy`（Core 命中已有条目）、`edit` 或 `manual`。`recopy` 时 detector 复用已存的产出，不再重新计算哈希。
+- `recopy` 时，宿主仅替换这个 detector owner 显式写入的附件 `type` 组和搜索 `scope` 组；未提及的组保留，空 `entries` 只清空指定组，什么都不写则保留已存产出。与现值相同的组写入会跳过。
+- 完整检测轮次（`copy`、`edit` 或 `manual`）在派发前预清旧的 Detector 附件和搜索扩展；处理函数失败不会恢复已清掉的产出。Action、renderer、task 产出各有独立 owner，不受这次清理影响。
+- 处理函数的附件与搜索扩展写入在同一个 Core 事务中提交；标签、置顶和其他副作用不属于该事务，后续标签或置顶失败不会回滚这批产物。
+- 每次复制都会检测。`trigger` 说明原因：`copy`、`recopy`（Core 命中已有条目）、`edit` 或 `manual`。`recopy` 时本 detector 尝试复用已存产出，缺失时才重新计算哈希。
 - 图片条目只带元信息；detector 通过 `ctx.input.imagePath()` 读取文件。
 
 ### 卡片页，固定高度 —— `template-renderer`
@@ -156,3 +158,15 @@ import { playCopiedSound } from "./shared/sound";
 ```
 
 独立 detector 不写附件，不会清掉其他 detector 的产出；`edit` 和 `manual` 不播放。多个插件竞争的是全 App 的声音槽，先到者不固定；延迟到达的请求若已过冷却仍可能播放，因此限流不等于“同一次复制只响一次”。
+
+## 默认配置示例
+
+`settings.defaults.json` 声明 `actionTitle`，`template-auto-action` 通过现有只读配置接口实际消费。Clipbus 安装/更新成功后补齐缺失键，用户保存的值在升级时保留。操作步骤见 [GUIDE_zh.md](./GUIDE_zh.md#试用默认配置)，契约以 SDK 的 `docs/manifest.md` 为准；旧宿主忽略该文件，Action 保留本地 fallback。
+
+后台任务：[本地 CPU 示例、独立入口、查询/取消与公共模块复用](GUIDE_zh.md#后台任务)。
+
+模板也演示 Worker 通知与卡片 **Notify demo** 按钮，见[系统通知说明](GUIDE_zh.md#系统通知)。
+
+模型 SSE：在 **Template Expanded** 的 **OpenAI-compatible SSE test** 中，授权独立的模型服务 origin，填写完整 Chat Completions URL、API key、模型和 prompt，点击 **SSE test** 即可实时查看文本；**Cancel SSE** 或关闭卡片会取消请求。key 使用密码输入框，只在当前卡片内存中保留。详见[模型 SSE 测试](GUIDE_zh.md#模型-sse-测试)。
+
+富文本样例：能力画廊的 **Copy rich-text sample** 可复制带标题、加粗和蓝色的内容；**Copy saved rich text** 可读取当前记录保存的 HTML/RTF 后重新复制。请粘贴到富文本编辑器验收，步骤见[使用指南](GUIDE_zh.md#验收富文本复制)。

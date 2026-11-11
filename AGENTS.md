@@ -20,7 +20,7 @@
 
 ## 改动本工程时
 
-- manifest 的 detector / Action id 必须与 `src/plugin.ts` 里 `definePlugin` 的 key 一一对应；新增 renderer 要在 `scripts/build-ui.mjs` 的 `PAGE_SOURCES` 加一行。`npm run build` 的 `verify:build` 会检查这两点。
+- manifest 的 task id 必须与 `src/tasks.ts` 的 tasks key 对应；detector / Action id 必须与 `src/plugin.ts` 里 `definePlugin` 的 key 一一对应；新增 renderer 要在 `scripts/build-ui.mjs` 的 `PAGE_SOURCES` 加一行。`npm run build` 的 `verify:build` 会检查这两点。
 - runtime 与卡片页共用的契约（`defineAttachment`、`defineMessage`）放在两侧都 import 的文件里，这些文件不得使用 Node 或 DOM API。
 - 新增附件类型或搜索 scope 时，同时加进 manifest 的 `writes.attachmentTypes` / `writes.searchScopes`；没声明的写入在宿主里会被拒绝（`undeclared`）。
 - 改完运行 `npm run verify`（manifest 校验 → 构建 → runtime manifest 校验 → 测试）。测试针对构建产物 `dist/plugin.cjs`，验证写入、结果与回复等行为，不写源码字符串或代码形状的检查。

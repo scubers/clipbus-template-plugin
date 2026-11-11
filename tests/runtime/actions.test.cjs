@@ -43,6 +43,15 @@ test('template-auto-action-image reads the image file the Host hands out', async
   assert.match(output.result.text, /File size: 128 B/);
 });
 
+test('template-auto-action reads the saved title, with a fallback for old Hosts', async t => {
+  const { registry, launch } = await setupPlugin(t);
+  for (const [values, title] of [[{ actionTitle: 'My title' }, 'My title'], [{ actionTitle: '' }, ''], [{}, 'Template Auto Action']]) {
+    const host = fakeHost(launch, { 'settings.get': { values } });
+    const output = await run(registry, host, 'template-auto-action', textContent('content'));
+    assert.equal(output.result.text.split('\n')[0], title);
+  }
+});
+
 test('gallery-auto-image turns text into a swatch in the plugin cache, by plugin-relative path', async t => {
   const { registry, launch } = await setupPlugin(t);
   const text = 'swatch me';

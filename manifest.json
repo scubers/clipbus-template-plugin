@@ -9,8 +9,13 @@
     "entry": "scripts/install.mjs"
   },
   "runtime": {
-    "nodeEntry": "dist/plugin.cjs"
+    "nodeEntry": "dist/plugin.cjs",
+    "taskEntry": "dist/tasks.cjs"
   },
+  "tasks": [
+    { "id": "local-digest", "title": "Local digest work", "inputKinds": ["text"] },
+    { "id": "http-stream", "title": "HTTP stream example", "inputKinds": ["text"] }
+  ],
   "detectors": [
     {
       "id": "template-detector",
@@ -21,6 +26,11 @@
       "id": "gallery-detector",
       "title": "Capability Gallery Detector",
       "inputKinds": ["text", "image"]
+    },
+    {
+      "id": "background-detector",
+      "title": "Background digest demo",
+      "inputKinds": ["text"]
     }
   ],
   "renderers": [
@@ -46,7 +56,12 @@
       "tint": "#2563EB",
       "buttons": [
         { "id": "analyze", "title": "Analyze" },
-        { "id": "toggle-debug", "title": "Debug" }
+        { "id": "toggle-debug", "title": "Debug" },
+        { "id": "start-background", "title": "Start background" },
+        { "id": "cancel-background", "title": "Cancel background" },
+        { "id": "notify-demo", "title": "Notify demo" },
+        { "id": "http-json", "title": "HTTP JSON" },
+        { "id": "http-stream", "title": "HTTP stream task" }
       ]
     },
     {
@@ -130,6 +145,10 @@
     "searchScopes": ["template", "gallery", "gallery.note"]
   },
   "permissions": {
+    "network": [
+      { "id": "http-demo", "title": "Service for manual HTTP JSON and SSE examples" },
+      { "id": "model-api", "title": "OpenAI-compatible model SSE service", "methods": ["POST"] }
+    ],
     "folders": [
       { "id": "exports", "title": "Folder for exported swatches", "access": "readWrite" }
     ]

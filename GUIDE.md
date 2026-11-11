@@ -51,6 +51,8 @@ Starts the Vite preview workbench. `src/preview/preview-host/main.ts` calls `cre
 
 The scenarios (`src/preview/scenarios/attachmentScenarios.ts`) take the card title, tint, buttons and height range from `manifest.json` and build payloads with the same functions the detectors use. The workbench has no Node process: a scenario's `messages` answer `runtime.call` in place of the plugin runtime, and asset URLs (`clipbus-asset://…`) do not load. For the full harness API see the SDK docs.
 
+The fake Host currently advertises `tasks.*` but returns `{}` for those calls without simulating a task lifecycle. Validate task admission, querying, cancellation and result writeback in Clipbus, even if `ctx.capabilities.has("tasks.enqueue")` is true in preview.
+
 ### Debugging inside Clipbus
 
 `ctx.log.debug/info/warn/error(...)` (and `ctx.log.write`) write to the plugin's own log file on both sides; the product log only records counts and rate limiting. On card pages, `forwardConsole()` from `@clipbus/plugin-sdk/dom` (called in every `main.ts` here) also sends `console.*` output there. Output a runtime prints with `console.*` goes to the bridge's stderr, not to the protocol stream. A development plugin keeps its data, cache and logs apart from an installed plugin with the same id.
@@ -86,7 +88,11 @@ Load states:
 | `conflict` | An enabled installed plugin already uses the same `plugin.id`. |
 | `ready` | Usable. |
 
-Plugins written for an earlier manifest schema show as `requiresUpdate` until they are migrated to v6 and rebuilt; there is no compatibility layer. From v5 to v6, `install` lost its `runtime` field (the install script always runs with Node), `ctx.system.openPath` went away, `ctx.system.openUrl` is for card pages and takes `http`, `https` or `mailto` URLs, and `ctx.system.reveal` takes a file inside the plugin. v6 also added `permissions.folders`: the runtime has no network and cannot start other programs, and reaches a folder of the user's only through a declared slot the user picks a folder for (the gallery's `exports` slot). Earlier, from v4 to v5, the template's migration meant: `attachmentRenderers` became `renderers` with a `page` path relative to the plugin root (no `runtime.uiRoot`), `height` became `{ min, max }` with optional `tint` and `buttons` defaults, `supportedInputKinds` became `inputKinds` (text and image only), `permissions` went away, detector `attachmentTypes` became the plugin-wide `writes` list (every attachment type and search scope the plugin writes), detectors write through `ctx` instead of returning artifacts, and card pages moved from `clipbus.*` to `ctx` from `@clipbus/plugin-sdk/view`. The SDK docs list the full mapping.
+Clipbus loads manifest schema v6; an unsupported `schemaVersion` produces `requiresUpdate`. The installed SDK's `docs/manifest.md` describes the current fields and validation rules. In the default sandbox, Runtime and Task Workers cannot access the network directly or start other programs. User-folder access uses declared slots selected by the user (the gallery's `exports` slot); HTTP through `ctx.http` uses the Host's approved network slots. `ctx.system.reveal` accepts existing paths in the plugin's directories or user-granted folders.
+
+A plugin may declare `"permissions": { "unrestrictedRuntime": true }` to request the high-trust Runtime mode; only user approval lets Runtime and Task Workers run in `direct` mode. Direct file, network and child-process access is subject to the OS and current user, rather than the folder/network slots. Card pages and Host-mediated APIs keep their restrictions. This template leaves it undeclared and uses the default sandbox.
+
+Use `ctx.item.replaceAttachments({ type, entries })` and `ctx.item.replaceSearchExtension({ scope, entries })` for new code. Pass an empty list to clear that group. The former `setAttachments` and `setSearchExtension` names still work and are deprecated. To edit only one attachment, pass its returned `ref` to `ctx.item.updateAttachment({ attachment, payload })`.
 
 ### Production build
 
@@ -164,3 +170,73 @@ That's all for the scaffold workflow. **All the knowledge for implementing a plu
 ## Short sound example
 
 After copying text or an image in Clipbus, click **Play sound** in the first preview card's header; the gallery also has a page button and Runtime probe. Choose **Format** (WAV / MP3 / AIFF) and **Volume** in the first card or the gallery’s **System** section; both choices also reach the sound Runtime probe and are remembered locally. The three real references in `sounds/` ship with a standalone export. Browser preview only records calls. The shared helper in `src/shared/sound.ts` treats a busy slot as a normal skip; automatic playback is off by default. See the [README sound example](README.md#short-sound-example) for an optional copy/recopy detector, and SDK `docs/files.md` for Host formats and limits.
+
+## Try the default configuration
+
+The root `settings.defaults.json` is included when exporting this template. Install or update the plugin in Clipbus to initialize `plugin.template.full.actionTitle` in External Settings. Change that value, then update again: your title stays, while newly declared keys are added. The `template-auto-action` Action reads the saved title through `ctx.settings.get()`; it falls back locally on older Hosts. Reload alone does not import defaults. Run `npm run verify` to validate the optional file and exercise the configured/fallback Action behavior. For the package rules, see the SDK's `docs/manifest.md`.
+
+## Background tasks
+
+This scaffold requires a Host that serves the tasks capabilities. Older Hosts reject the new manifest fields even though the schema remains v6.
+
+Copy text beginning with `local-digest:` to let the short detector enqueue a local CPU workload: one million chained SHA-256 rounds. Duration depends on the machine. In a text item's Expanded Preview, **Start background** replaces the current task and **Cancel background** targets its exact taskId. The page queries active work and queries again on reopen; closing it leaves accepted work running. Exiting Clipbus can interrupt it.
+
+`src/plugin.ts` handles detectors/messages; `src/tasks.ts` is the independent Worker entry. Both import `features/background-work/compute.ts`. The foreground message `template.localDigest` uses the same function with a caller-selected smaller round count. Imports share implementation; instances, caches and globals remain separate between processes.
+
+Tasks are scheduled by the subject itemId. Reuse keeps the active input snapshot when data is equal; use replace to compute from updated content. Hash is checked only at final writeback: missing items or changed hashes discard the result, while A→B→A is accepted.
+
+The Worker yields between batches, checks `ctx.task.signal`, and publishes an expanded attachment with key `background-digest` under its task owner. Failure or cancellation preserves a previous successful result. It uses no network or child processes. The browser preview workbench does not run real Node workers: validate background lifecycle in Clipbus.
+
+`build:runtime` bundles both `runtime.nodeEntry` and `runtime.taskEntry`; `verify:build` checks their respective handler registries. Full API and limits: SDK `docs/runtime.md` and `API.md`.
+
+## System notifications
+
+Expanded Preview has a **Notify demo** button. The background Worker also requests a best-effort notification after calculation. Notification permission or rate limits do not fail the calculation.
+
+```ts
+if (ctx.capabilities.has("system.notify")) {
+  try {
+    await ctx.system.notify({
+      title: "Calculation finished",
+      body: "Reopen the source item to check whether its result was saved.",
+    });
+  } catch {
+    // Keep the task result even when notifications are disabled or rate limited.
+  }
+}
+```
+
+This method is available to ordinary Runtime calls, Task Workers and card pages. Title and body are nonblank single-line plain text, bounded by UTF-8 bytes. The Host supplies the Clipbus/plugin identity. The current budget is one admission per plugin per 10 seconds and one globally per 2 seconds, shared across processes and pages.
+
+On macOS the first call can request system notification permission; Windows respects the system notification setting. Try **Notify demo** first to establish permission before calling from a short detector. Success means submitted to the OS, not necessarily shown. Focus settings can suppress a banner. The browser workbench only records the call.
+
+Notifications are immediate side effects. A notification in a task handler does not prove the Host has committed the staged result. This example says **calculation finished**, not **result saved**. Do not put clipboard content or secrets in notification text by default: the OS can display it on the lock screen and retain it in notification history.
+
+## HTTP examples
+
+The optional network slot `http-demo` has no fixed origin. Enter your local test service address during installation or in the plugin menu → Network access, for example `http://127.0.0.1:11434`. A slot without a configured, approved origin cannot make requests. Omitted paths/methods allow every supported path/method of that origin; add explicit lists to narrow the scope.
+
+The Expanded Preview header has two manual examples:
+
+- **HTTP JSON** uses the expanded card's method (GET / POST / PUT / PATCH / DELETE), editable path including query, and optional JSON body. The inline **Request JSON** button sends the same request. Results show the HTTP status and a bounded JSON excerpt; HTTP errors retain their status, invalid JSON is reported explicitly, and an empty response is displayed as `null`. The request is manual and cannot change the configured origin.
+- **HTTP stream task** admits the `http-stream` background contribution, calls GET /events with Accept: text/event-stream, parses split UTF-8 / CRLF / multiline data, then stages an expanded result attachment. Closing the panel leaves the accepted task running; a failed or cancelled stream publishes no partial result.
+
+For a public JSON test, configure origin `https://jsonplaceholder.typicode.com`, select **GET**, enter `/todos/1`, and click **Request JSON** (or the Host's **HTTP JSON** button). To test a JSON body, select **POST**, enter `/posts`, and provide `{"title":"demo","body":"hello","userId":1}`. No local test server or particular clipboard text is required. The form values live only in the current card session.
+
+Both examples use `ctx.http.request`; neither automatically sends source clipboard content or credentials. The background SSE example still requires a service providing `/events`. The JSON form does not save credentials or provide an Authorization field. For a model request with a key and prompt, use the separate live example below. The native Host supplies generic HTTP bytes, permissions and cancellation. See SDK `docs/http.md` for the complete contract. The browser preview does not serve HTTP capabilities or real Workers.
+
+网络授权在安装确认或插件设置中完成，首次请求不弹插件授权框。自定义地址只填写协议、主机和端口；路径限制另放在 paths 中。更换或撤销绑定会关闭旧请求并刷新插件会话。未声明 network 的旧插件仍可加载，但没有 HTTP 权限。
+
+### Model SSE test
+
+1. Reload/update the template and approve the new `model-api` slot in plugin network settings. Enter the model service origin only, such as `https://api.openai.com` or a local compatible service's scheme, host and port. This slot permits POST and is independent of `http-demo`.
+2. Open **Template Expanded → OpenAI-compatible SSE test**. Enter the **full** Chat Completions URL (for example `https://api.openai.com/v1/chat/completions`), API key, your model identifier and a prompt. The URL's origin must match the approved model origin. For a compatible provider, use its complete endpoint without automatic path rewriting.
+3. Click **SSE test**. The page sends `POST` with `{ model, messages: [{ role: "user", content: prompt }], stream: true }`, optional `Authorization: Bearer …`, and appends `choices[0].delta.content` as events arrive. **Cancel SSE** stops the request; partial text remains visible on cancellation or error. EOF before `[DONE]` is reported as incomplete.
+
+This is a text-only [OpenAI Chat Completions streaming](https://developers.openai.com/api/reference/resources/chat/subresources/completions/streaming-events) example, not Responses API or tool-call handling. The native Host handles HTTP; the template shares SSE framing with the background example. No model SDK or new Host API is needed.
+
+The key is a password input, optional for local services, and stays only in the current card's memory. Key, prompt and output are not saved in settings, storage, attachments or logs; only the explicitly entered prompt is sent, never source clipboard content. This is a page-owned live request: closing/replacing the card cancels it, and reopening clears the key, model, prompt and output. The model service may charge for a manual request; this demo never invokes it automatically. Native HTTP deadlines still apply. Real provider acceptance is manual; automated tests use synthetic SSE without real keys or paid calls.
+
+## Try rich-text copy
+
+In the installed template, select a text history item and open the bounded capability gallery card. Under **System**, click **Copy rich-text sample**, then paste into TextEdit, Word or another rich-text editor: the heading, bold word and blue text should keep their styles. Clipbus records the same content as a plain-text row. Select that new row and click **Copy saved rich text** to test reading the persisted HTML/RTF and copying it again, including after restarting Clipbus or syncing to the other platform. The Runtime probe buttons offer the same operations. Browser preview is simulated; verify actual styles in the native app.

@@ -70,8 +70,10 @@ Inside the Clipbus monorepo the project also carries `scripts/export.mjs`, `test
 
 - File: `src/features/template-detector/detector.ts`; `inputKinds`: `text`, `image`
 - Writes through `ctx`: the preview attachment with a card title (`Text · 3 lines`), the expanded attachment, a search extension entry, and a `json` tag on text that parses as JSON. The handler returns nothing.
-- When it returns, the Host replaces this detector's previous output with what the run wrote, and skips writes equal to what is stored. A run that writes nothing clears its output.
-- Detection runs after every copy. `trigger` tells why: `copy`, `recopy` (Core matched an existing item), `edit` or `manual`. On `recopy` the detector reuses its stored output instead of hashing the content again.
+- On `recopy`, the Host replaces only this detector owner's explicitly written attachment `type` and search `scope` groups. Unmentioned groups remain; an empty `entries` list clears the specified group, and writing nothing preserves the stored output. Unchanged group writes are skipped.
+- A full detection round (`copy`, `edit` or `manual`) clears previous Detector-owned attachments and search extensions before dispatch. A failed handler does not restore that cleared output. Action, renderer and task outputs have separate owners and survive this cleanup.
+- The handler's attachment and search-extension writes commit together in one Core transaction. Tags, pinning and other side effects are outside that transaction; a later tag or pin failure does not undo the artifact batch.
+- Detection runs after every copy. `trigger` tells why: `copy`, `recopy` (Core matched an existing item), `edit` or `manual`. On `recopy` this detector tries to reuse its stored output, hashing the content only if that output is missing.
 - Image items carry metadata only; the detector reads the file through `ctx.input.imagePath()`.
 
 ### card page, fixed height — `template-renderer`
@@ -156,3 +158,19 @@ Add its matching declaration to the manifest's `detectors` array:
 ```
 
 This separate detector writes no attachments and leaves other detectors' outputs alone; edit/manual triggers stay silent. Plugins compete for one app-wide sound slot without a fixed winner. A delayed request may play after cooldown, so rate limiting does not deduplicate a copy event.
+
+## Default configuration example
+
+`settings.defaults.json` declares `actionTitle`, consumed by `template-auto-action` through the existing read-only settings API. Clipbus imports missing keys after a successful install/update; saved user values survive upgrades. See [GUIDE.md](./GUIDE.md#try-the-default-configuration) for a runnable check and the SDK's `docs/manifest.md` for the contract. Older Hosts ignore the file and the Action keeps its local fallback.
+
+Background tasks: [local CPU example, separate entry, query/cancel and shared modules](GUIDE.md#background-tasks).
+
+The template also demonstrates system notifications from the Worker and the **Notify demo** card button; see [the notification guide](GUIDE.md#system-notifications).
+
+HTTP: configure the **HTTP demo** network slot during installation or later in plugin network settings. The expanded card lets you choose a method, path (including query) and optional JSON body, then displays the HTTP status and JSON response. **HTTP JSON** uses the same form; **HTTP stream task** admits a background SSE reader for GET /events. Neither automatically sends clipboard content or credentials. See [HTTP examples](GUIDE.md#http-examples).
+
+Model SSE: the expanded card also has an **OpenAI-compatible SSE test**. Authorize its separate model origin, enter the full Chat Completions URL, API key, model and prompt, then click **SSE test** to see text arrive live. The key is masked and kept only in this card's memory. **Cancel SSE** or closing the card stops the request. See [model SSE test](GUIDE.md#model-sse-test).
+
+网络示例：安装时或“网络授权”设置中填写服务 origin，JSON 与后台 SSE 示例仅在手动点击后请求；paths / methods 省略表示该 origin 下全部路径与受支持方法。
+
+Rich-text example: the bounded capability gallery provides **Copy rich-text sample** and **Copy saved rich text**. Paste into a rich-text editor to verify native HTML/RTF output, then select the captured row to test a persisted round trip. See [the guide](GUIDE.md#try-rich-text-copy).

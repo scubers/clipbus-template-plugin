@@ -23,9 +23,9 @@ const HIGHLIGHTS: Record<GalleryShape, string[]> = {
 export const detectGallery: DetectorHandler = async ({ content }, ctx) => {
   await Promise.all([
     ...GALLERY_SHAPES.map((shape) =>
-      galleryCards[shape].set(ctx, [{ key: shape, payload: { shape, inputKind: content.kind, highlights: HIGHLIGHTS[shape] } }]),
+      galleryCards[shape].replace(ctx, [{ key: shape, payload: { shape, inputKind: content.kind, highlights: HIGHLIGHTS[shape] } }]),
     ),
-    ctx.item.setSearchExtension({
+    ctx.item.replaceSearchExtension({
       scope: GALLERY_SEARCH_SCOPE,
       entries: GALLERY_SHAPES.map((shape) => ({
         key: shape,

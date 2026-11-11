@@ -30,8 +30,12 @@ function describe(title: string, item: PluginItemSnapshot, content: PluginConten
 }
 
 /** template-auto-action: text and image. */
-export const describeInput: ActionHandler = async ({ item, content }) =>
-  result.text(describe("Template Auto Action", item, content), "Template action context ready");
+export const describeInput: ActionHandler = async ({ item, content }, ctx) => {
+  const { values } = await ctx.settings.get<{ actionTitle?: unknown }>();
+  // Old Hosts ignore settings.defaults.json; missing/invalid values still have a local fallback.
+  const title = typeof values?.actionTitle === "string" ? values.actionTitle : "Template Auto Action";
+  return result.text(describe(title, item, content), "Template action context ready");
+};
 
 // Plugin Pro quota demo: the text-only and image-only variants below, with the
 // gallery Actions, push the manifest past the free-tier Action quota (3). On a

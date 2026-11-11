@@ -8,12 +8,14 @@ import { galleryImageAction, galleryNoneAction, galleryTextAction } from "./feat
 import { detectGallery } from "./features/capability-gallery/runtime/detector";
 import { galleryMessages } from "./features/capability-gallery/runtime/messages";
 import { handleAnalyzeItem } from "./features/expanded-renderer/analyze";
+import { detectBackground, handleLocalDigest } from "./features/background-work/runtime";
 import { detectTemplate } from "./features/template-detector/detector";
 
 export default definePlugin({
   detectors: {
     "template-detector": detectTemplate,
     "gallery-detector": detectGallery,
+    "background-detector": detectBackground,
   },
   actions: {
     "template-auto-action": describeInput,
@@ -23,5 +25,5 @@ export default definePlugin({
     "gallery-auto-image": galleryImageAction,
     "gallery-auto-none": galleryNoneAction,
   },
-  messages: [handleAnalyzeItem, ...galleryMessages],
+  messages: [handleAnalyzeItem, handleLocalDigest, ...galleryMessages],
 });

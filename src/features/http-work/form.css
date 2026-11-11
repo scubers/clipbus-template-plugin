@@ -1,0 +1,50 @@
+.http-form,
+.http-form label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  color: var(--clipbus-text-secondary, #475569);
+  font-size: 11px;
+}
+
+.http-form__request {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.http-form__path {
+  flex: 1;
+}
+
+.http-form input,
+.http-form select,
+.http-form textarea,
+.http-form button {
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--clipbus-border, #cbd5e1);
+  border-radius: 5px;
+  color: var(--clipbus-text-primary, #0f172a);
+  background: var(--clipbus-surface, #ffffff);
+  font: inherit;
+}
+
+.http-form textarea {
+  resize: vertical;
+}
+
+.http-form button {
+  justify-self: start;
+  cursor: pointer;
+}
+
+.http-form :focus-visible {
+  outline: 2px solid var(--clipbus-accent, #2563eb);
+  outline-offset: 2px;
+}
+
+.http-form :disabled {
+  opacity: 0.6;
+  cursor: default;
+}

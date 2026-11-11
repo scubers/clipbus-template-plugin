@@ -50,6 +50,52 @@
           </dl>
         </section>
 
+        <section v-if="backgroundSupported || backgroundError" class="expanded-panel__extended">
+          <p class="expanded-panel__section-label">Background digest</p>
+          <p class="expanded-panel__hint">
+            {{ backgroundStatus }}
+            <span v-if="backgroundTask?.outcome"> · {{ backgroundTask.outcome.reason }}</span>
+          </p>
+          <p v-if="backgroundError" class="expanded-panel__error">{{ backgroundError }}</p>
+          <p v-if="item.kind !== 'text'" class="expanded-panel__hint">Select a text item to run this local digest example.</p>
+          <p v-if="payload.localDigest" class="expanded-panel__hint">
+            {{ payload.localDigest.rounds }} rounds · {{ payload.localDigest.sha256 }}
+          </p>
+          <p class="expanded-panel__hint">Closing the card leaves accepted work running. Reopen to query it.</p>
+        </section>
+
+        <section v-if="httpSupported" class="expanded-panel__extended">
+          <p class="expanded-panel__section-label">HTTP examples</p>
+          <p class="expanded-panel__hint">Origin: {{ httpOrigin ?? "Configure the HTTP demo origin in plugin network settings." }}</p>
+          <form class="http-form" @submit.prevent="runHttpJson">
+            <div class="http-form__request">
+              <label>
+                Method
+                <select v-model="httpMethod" :disabled="requestingJson">
+                  <option v-for="method in ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']" :key="method">{{ method }}</option>
+                </select>
+              </label>
+              <label class="http-form__path">
+                Path (including query)
+                <input v-model="httpPath" :disabled="requestingJson" placeholder="/todos/1" spellcheck="false">
+              </label>
+            </div>
+            <label v-if="httpMethod !== 'GET'">
+              JSON body (optional)
+              <textarea v-model="httpBody" :disabled="requestingJson" rows="3" placeholder='{"title":"demo"}' spellcheck="false" />
+            </label>
+            <button type="submit" :disabled="requestingJson || !httpOrigin">{{ requestingJson ? "Requesting…" : "Request JSON" }}</button>
+          </form>
+          <p v-if="httpStatus" class="expanded-panel__hint">HTTP {{ httpStatus }}</p>
+          <pre v-if="httpReply" class="expanded-panel__debug-body">{{ httpReply }}</pre>
+          <p v-if="payload.httpResult" class="expanded-panel__hint">
+            {{ payload.httpResult.events }} SSE events · {{ payload.httpResult.lastEvent }}
+          </p>
+          <p v-if="httpError" class="expanded-panel__error">{{ httpError }}</p>
+        </section>
+
+        <ModelStreamDemo v-if="httpSupported" />
+
         <section v-if="showDebug" class="expanded-panel__debug">
           <p class="expanded-panel__section-label">Debug payload</p>
           <pre class="expanded-panel__debug-body">{{ debugBlock }}</pre>
@@ -72,6 +118,11 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { autoFit } from "@clipbus/plugin-sdk/dom";
+import { ctx } from "@clipbus/plugin-sdk/view";
+import type { PluginTaskSnapshot } from "@clipbus/plugin-sdk";
+import { BACKGROUND_ROUNDS, LOCAL_DIGEST_TASK } from "../background-work/contracts";
+import { requestJsonDemo } from "../http-work/json";
+import ModelStreamDemo from "../http-work/ModelStreamDemo.vue";
 import { useCard, useCardButton } from "../../shared/composables/useCard";
 import { formatByteCount, formatJSON, type DisplayFact } from "../../shared/display";
 import { analyzeItem, type ItemAnalysis } from "./messages";
@@ -126,16 +177,143 @@ useCardButton("toggle-debug", () => {
   showDebug.value = !showDebug.value;
 });
 
+const backgroundSupported = ctx.capabilities.has("tasks.enqueue");
+const httpSupported = ctx.capabilities.has("http.start");
+const httpOrigin = ctx.plugin.network("http-demo");
+const httpMethod = ref("GET");
+const httpPath = ref("/todos/1");
+const httpBody = ref("");
+const httpReply = ref("");
+const httpError = ref<string | null>(null);
+const httpStatus = ref<number | null>(null);
+const requestingJson = ref(false);
+async function runHttpJson(): Promise<void> {
+  if (requestingJson.value) return;
+  httpError.value = null;
+  httpReply.value = "";
+  httpStatus.value = null;
+  if (!httpSupported || !httpOrigin) {
+    httpError.value = "Configure the HTTP demo origin in plugin network settings.";
+    return;
+  }
+  requestingJson.value = true;
+  try {
+    const response = await requestJsonDemo(ctx.http, {
+      origin: httpOrigin, path: httpPath.value, method: httpMethod.value, body: httpBody.value,
+    });
+    httpStatus.value = response.status;
+    httpReply.value = response.body;
+    if (response.status >= 300) httpError.value = `Request returned HTTP ${response.status}.`;
+  } catch (error) { httpError.value = error instanceof Error ? error.message : String(error); }
+  finally { requestingJson.value = false; }
+}
+useCardButton("http-json", runHttpJson);
+useCardButton("http-stream", async () => {
+  httpError.value = null;
+  try {
+    if (!httpSupported || !backgroundSupported || item.value.kind !== "text") throw new Error("Select a text item on a Host with HTTP and task support.");
+    const accepted = await ctx.tasks.enqueue({ id: "http-stream", policy: "replace" });
+    httpReply.value = "SSE task accepted: " + accepted.taskId + ". Close the panel; reopen the result after completion.";
+  } catch (error) { httpError.value = error instanceof Error ? error.message : String(error); }
+});
+const backgroundTask = ref<PluginTaskSnapshot | null>(null);
+const backgroundError = ref<string | null>(null);
+const backgroundAction = ref<"start" | "cancel" | null>(null);
+const backgroundStatus = computed(() => {
+  if (backgroundAction.value === "start") return "Submitting task…";
+  if (backgroundAction.value === "cancel") return "Cancelling task…";
+  return backgroundTask.value?.state ?? "No current task";
+});
+let mounted = false;
+let refreshingTask = false;
+let refreshRequested = false;
+let taskTimer: ReturnType<typeof setTimeout> | undefined;
+
+async function refreshBackground(): Promise<void> {
+  refreshRequested = true;
+  clearTimeout(taskTimer);
+  if (refreshingTask || !mounted) return;
+  refreshingTask = true;
+  try {
+    do {
+      refreshRequested = false;
+      const snapshot = await ctx.tasks.get({ id: LOCAL_DIGEST_TASK });
+      if (mounted) backgroundTask.value = snapshot;
+    } while (mounted && refreshRequested);
+  } catch (error) {
+    if (mounted) backgroundError.value = error instanceof Error ? error.message : String(error);
+  } finally {
+    refreshingTask = false;
+    if (mounted && backgroundTask.value && ["queued", "running", "stopping"].includes(backgroundTask.value.state)) {
+      taskTimer = setTimeout(() => { void refreshBackground(); }, 1000);
+    }
+  }
+}
+
+useCardButton("start-background", async () => {
+  if (backgroundAction.value !== null) return;
+  backgroundError.value = null;
+  backgroundAction.value = "start";
+  try {
+    if (!backgroundSupported) throw new Error("This Host does not support background tasks.");
+    if (item.value.kind !== "text") throw new Error("Select a text item to start the local digest task.");
+    await ctx.tasks.enqueue({ id: LOCAL_DIGEST_TASK, data: { rounds: BACKGROUND_ROUNDS }, policy: "replace" });
+    await refreshBackground();
+  } catch (error) {
+    backgroundError.value = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+  } finally {
+    backgroundAction.value = null;
+  }
+});
+useCardButton("cancel-background", async () => {
+  if (backgroundAction.value !== null) return;
+  backgroundError.value = null;
+  const current = backgroundTask.value;
+  if (!current || !["queued", "running", "stopping"].includes(current.state)) {
+    backgroundError.value = "There is no active task to cancel.";
+    return;
+  }
+  backgroundAction.value = "cancel";
+  try {
+    await ctx.tasks.cancel({ taskId: current.taskId });
+    await refreshBackground();
+  } catch (error) {
+    backgroundError.value = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+  } finally {
+    backgroundAction.value = null;
+  }
+});
+
+useCardButton("notify-demo", async () => {
+  backgroundError.value = null;
+  if (!ctx.capabilities.has("system.notify")) {
+    backgroundError.value = "This Host does not support system notifications.";
+    return;
+  }
+  try {
+    await ctx.system.notify({
+      title: "Template notification",
+      body: "This is a plain-text notification from the template plugin.",
+    });
+  } catch (error) {
+    backgroundError.value = error instanceof Error ? error.message : String(error);
+  }
+});
+
 const content = ref<HTMLElement | null>(null);
 let stopAutoFit: (() => void) | null = null;
 
 onMounted(() => {
+  mounted = true;
+  if (backgroundSupported && item.value.kind === "text") void refreshBackground();
   if (content.value !== null) {
     stopAutoFit = autoFit({ target: content.value });
   }
 });
 
 onUnmounted(() => {
+  mounted = false;
+  clearTimeout(taskTimer);
   stopAutoFit?.();
   stopAutoFit = null;
 });

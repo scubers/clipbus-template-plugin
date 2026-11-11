@@ -2,10 +2,14 @@
 // preview, shown by the adaptive-height card page.
 
 import { defineAttachment, type PluginContent, type PluginContentKind } from "@clipbus/plugin-sdk";
+import type { LocalDigestResult } from "../background-work/contracts";
 import { buildContentDisplay, truncateText, type DisplayInfo } from "../../shared/display";
 
 export interface TemplateExpandedPayload {
   contentKind: PluginContentKind;
+  /** Present only in the task-owned result attachment. */
+  localDigest?: LocalDigestResult;
+  httpResult?: { events: number; lastEvent: string };
   display: DisplayInfo;
   /** The first characters of a text item. */
   excerpt?: string;

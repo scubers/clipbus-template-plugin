@@ -11,13 +11,19 @@ import { fileURLToPath } from "node:url";
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const manifest = JSON.parse(await readFile(path.join(projectRoot, "manifest.json"), "utf8"));
 
-await build({
+for (const [source, output] of [
+  ["src/plugin.ts", manifest.runtime.nodeEntry],
+  ["src/tasks.ts", manifest.runtime.taskEntry],
+]) {
+  if (!output) continue;
+  await build({
   absWorkingDir: projectRoot,
-  entryPoints: [path.join(projectRoot, "src/plugin.ts")],
-  outfile: path.join(projectRoot, manifest.runtime.nodeEntry),
+  entryPoints: [path.join(projectRoot, source)],
+  outfile: path.join(projectRoot, output),
   bundle: true,
   format: "cjs",
   platform: "node",
   target: "node18",
   logLevel: "info",
-});
+  });
+}
